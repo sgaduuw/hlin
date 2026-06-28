@@ -10,9 +10,11 @@ calendar client itself.
 Named for **Hlín**, the Norse goddess who watches over the people Frigg
 names so harm does not slip through.
 
-> **Status: early WIP.** The data model, migrations, and household seed
-> are in place. Recall logic, `.ics` feeds, the web UI, and the container
-> packaging are not built yet.
+> **Status: early WIP.** The data model, migrations, household seed,
+> recall logic, read-only `.ics` feeds, and the read views (dashboard +
+> per-person page) are in place. Still to come: the quick-add/logging
+> write flow, the contacts directory page, the optional ntfy reminder,
+> and the container packaging.
 
 ## Stack
 
@@ -33,6 +35,21 @@ uv run ruff check hlin tests         # lint
 
 Edit `hlin/seed_data.py` to set your own household before seeding; the
 placeholder names there are examples.
+
+## Calendar feeds
+
+Read-only iCalendar feeds, subscribe to them in your calendar client (they
+are not a writable CalDAV server). Booked appointments are timed events,
+derived obligation due-dates are all-day events, and contact birthdays are
+yearly all-day events. UIDs are stable so clients update events in place.
+
+| Feed                      | Contents                                          |
+| ------------------------- | ------------------------------------------------- |
+| `/feeds/all.ics`          | All persons' appointments and obligation due-dates.|
+| `/feeds/person/<id>.ics`  | One person's appointments and due-dates.          |
+| `/feeds/social.ics`       | Contact birthdays.                                |
+
+The dashboard and each person page link to the relevant feed URLs.
 
 ## Configuration
 
