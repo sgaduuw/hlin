@@ -1,0 +1,54 @@
+name: CI
+
+# Tier-C: the pull request is the single test gate. No push trigger (so a
+# branch is never double-listed), and the tag-triggered image publish does
+# not re-run the suite. Covers PRs into develop and main (release/hotfix
+# PRs target main).
+on:
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          python-version: "3.14"
+      - run: uv sync --frozen
+      - name: Ruff lint
+        run: uv run ruff check hlin tests
+      - name: Ruff format check
+        run: uv run ruff format --check hlin tests
+      - name: Tests
+        run: uv run pytest -q
+
+  hadolint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+  docker-build:
+    # Validate the image builds (no push). The actual publish happens on a
+    # tag via build-image.yml.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: hlin:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
