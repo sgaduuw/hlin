@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}hlin{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='pico.min.css') }}">
+</head>
+<body>
+  <header class="container">
+    <nav>
+      <ul><li><strong><a href="{{ url_for('views.dashboard') }}">hlin</a></strong></li></ul>
+      <ul>
+        <li><a href="{{ url_for('views.dashboard') }}">Dashboard</a></li>
+        <li><a href="{{ url_for('contacts.index') }}">Contacts</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="container">
+    <small>hlin v{{ version }}</small>
+  </footer>
+  <script src="{{ url_for('static', filename='htmx.min.js') }}"></script>
+</body>
+</html>

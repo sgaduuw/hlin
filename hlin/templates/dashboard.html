@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - hlin{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Coming up / Overdue</h1>
+  <p>Recurring obligations due within {{ horizon_days }} days, overdue first.</p>
+</hgroup>
+{% if panel %}
+<table>
+  <thead><tr><th>Who</th><th>What</th><th>Due</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for item in panel %}
+    <tr>
+      <td><a href="{{ url_for('views.person', person_id=item.obligation.person_id) }}">{{ item.obligation.person.name }}</a></td>
+      <td>{{ item.obligation.kind }}</td>
+      <td>{{ item.next_due }}</td>
+      <td>{% if item.status.value == 'overdue' %}<mark>overdue</mark>{% else %}due soon{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Nothing due in the next {{ horizon_days }} days.</p>
+{% endif %}
+
+<h2>Household</h2>
+{% for label, cards in groups %}
+  {% if cards %}
+  <h3>{{ label }}</h3>
+  <div class="grid">
+  {% for card in cards %}
+    <article>
+      <header><a href="{{ url_for('views.person', person_id=card.person.id) }}"><strong>{{ card.person.name }}</strong></a></header>
+      {% if card.next_appointment %}
+        <p>Next: {{ card.next_appointment.kind }} on {{ card.next_appointment.scheduled_at.strftime('%Y-%m-%d %H:%M') }}</p>
+      {% else %}
+        <p>No upcoming appointment.</p>
+      {% endif %}
+      <p><small>{{ card.open_follow_ups }} open follow-up(s)</small></p>
+    </article>
+  {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+
+<h2>Calendar feeds</h2>
+<p>Subscribe to these read-only feeds in your calendar client:</p>
+<ul>
+  <li><a href="{{ url_for('feeds.all_feed') }}">All appointments and due-dates</a> (<code>/feeds/all.ics</code>)</li>
+  <li><a href="{{ url_for('feeds.social_feed') }}">Birthdays</a> (<code>/feeds/social.ics</code>)</li>
+</ul>
+{% endblock %}

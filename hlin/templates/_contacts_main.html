@@ -1,0 +1,71 @@
+{# Contacts directory body, swapped in by htmx (hx-target="#contacts-main"). #}
+<div id="contacts-main">
+<hgroup>
+  <h1>Contacts</h1>
+  <p>The kids' social network: friends and their parents.</p>
+</hgroup>
+
+{% for child in children %}
+<h2>{{ child.name }}'s friends</h2>
+{% if child.friends %}
+<table>
+  <thead><tr><th>Name</th><th>Parent</th><th>Phone</th><th>Birthday</th></tr></thead>
+  <tbody>
+  {% for f in child.friends %}
+    <tr>
+      <td>{{ f.name }}</td>
+      <td>{% if f.parent %}{{ f.parent.name }}{% if f.parent.phone %} ({{ f.parent.phone }}){% endif %}{% endif %}</td>
+      <td>{{ f.phone or '' }}</td>
+      <td>{{ f.birthday or '' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p>No friends recorded.</p>{% endif %}
+{% endfor %}
+
+{% if other_contacts %}
+<h2>Parents and other contacts</h2>
+<table>
+  <thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th></tr></thead>
+  <tbody>
+  {% for c in other_contacts %}
+    <tr><td>{{ c.name }}</td><td>{{ c.kind.value }}</td><td>{{ c.phone or '' }}</td><td>{{ c.email or '' }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>Add contact</h2>
+<p><small>To attach a friend to their parent, add the parent first (type "parent"); it then appears in the parent picker.</small></p>
+<form hx-post="{{ url_for('contacts.add') }}" hx-target="#contacts-main" hx-swap="outerHTML">
+  <div class="grid">
+    <input name="name" placeholder="name" required>
+    <select name="kind" aria-label="type">
+      {% for k in contact_kinds %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="grid">
+    <input name="phone" placeholder="phone">
+    <input name="email" type="email" placeholder="email">
+    <input name="birthday" type="date" aria-label="birthday">
+  </div>
+  {% if children %}
+  <fieldset>
+    <legend>Friend of:</legend>
+    {% for child in children %}
+    <label><input type="checkbox" name="linked_person_ids" value="{{ child.id }}"> {{ child.name }}</label>
+    {% endfor %}
+  </fieldset>
+  {% endif %}
+  {% if parent_options %}
+  <label>Parent contact:
+    <select name="parent_contact_id">
+      <option value="">(none)</option>
+      {% for p in parent_options %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <button type="submit">Add contact</button>
+</form>
+</div>
