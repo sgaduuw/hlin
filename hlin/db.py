@@ -1,9 +1,10 @@
 """Engine and session factory.
 
 SQLite specifics applied on every connect: WAL journal mode (concurrent
-readers alongside a writer) and ``foreign_keys=ON`` (SQLite leaves FK
-enforcement off by default, which would silently break our cascades).
-This mirrors the mimir deployment shape.
+readers alongside a writer), ``foreign_keys=ON`` (SQLite leaves FK
+enforcement off by default, which would silently break our cascades), and
+a ``busy_timeout`` so a writer waits briefly rather than erroring under the
+multi-worker gunicorn deployment. This mirrors the mimir deployment shape.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ def make_engine(url: str) -> Engine:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
 
     return engine

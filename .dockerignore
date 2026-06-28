@@ -1,0 +1,17 @@
+# Keep the build context (and image) lean and free of local-only state.
+.git/
+.github/
+_claude/
+CLAUDE.md
+.venv/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+tests/
+*.db
+*.db-wal
+*.db-shm
+.env
+.DS_Store
