@@ -6,7 +6,8 @@ from importlib.metadata import PackageNotFoundError, version
 
 from flask import Flask
 
-from . import cli
+from . import cli, web
+from .settings import settings
 
 try:
     __version__ = version("hlin")
@@ -22,6 +23,12 @@ def create_app() -> Flask:
     app.jinja_env.lstrip_blocks = True
 
     cli.register(app)
+    web.register(app)
+
+    @app.context_processor
+    def inject_globals() -> dict[str, object]:
+        # Available to every template (footer version, dashboard horizon).
+        return {"version": __version__, "horizon_days": settings.horizon_days}
 
     @app.get("/healthz")
     def healthz() -> tuple[dict[str, str], int]:

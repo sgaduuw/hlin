@@ -1,0 +1,33 @@
+services:
+  hlin:
+    build: .
+    image: hlin:latest
+    restart: unless-stopped
+    environment:
+      HLIN_DB_PATH: /data/hlin.db
+      HLIN_HORIZON_DAYS: "60"
+      # Single shared household credential (optional; unset == trust the network).
+      # HLIN_SHARED_CREDENTIAL: change-me
+      # Optional ntfy reminder channel (see README).
+      # HLIN_NTFY_URL: https://ntfy.example
+      # HLIN_NTFY_TOPIC: hlin-household-secret
+    volumes:
+      - hlin-data:/data
+    ports:
+      # TLS terminates upstream at the reverse proxy; the app serves plain
+      # HTTP on the trusted network. Bind to localhost if the proxy is on
+      # the same host.
+      - "8000:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').status==200 else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  hlin-data:

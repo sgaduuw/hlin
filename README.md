@@ -10,9 +10,12 @@ calendar client itself.
 Named for **Hlín**, the Norse goddess who watches over the people Frigg
 names so harm does not slip through.
 
-> **Status: early WIP.** The data model, migrations, and household seed
-> are in place. Recall logic, `.ics` feeds, the web UI, and the container
-> packaging are not built yet.
+> **Status: v1 scope complete.** In place: the data model, migrations,
+> household seed, recall logic, read-only `.ics` feeds, the dashboard and
+> per-person pages, the quick-add / logging write flow (add appointment,
+> add obligation, log an outcome which advances the matching obligation),
+> the contacts directory, the optional ntfy reminder, and container
+> packaging (Dockerfile + Compose).
 
 ## Stack
 
@@ -27,12 +30,28 @@ uv sync                              # install deps + project
 uv run alembic upgrade head          # create / migrate the SQLite DB
 uv run flask --app hlin seed         # seed the household (idempotent)
 uv run flask --app hlin run          # dev server (http://127.0.0.1:5000)
+uv run flask --app hlin remind --dry-run   # preview the ntfy reminder
 uv run pytest                        # tests
 uv run ruff check hlin tests         # lint
 ```
 
 Edit `hlin/seed_data.py` to set your own household before seeding; the
 placeholder names there are examples.
+
+## Calendar feeds
+
+Read-only iCalendar feeds, subscribe to them in your calendar client (they
+are not a writable CalDAV server). Booked appointments are timed events,
+derived obligation due-dates are all-day events, and contact birthdays are
+yearly all-day events. UIDs are stable so clients update events in place.
+
+| Feed                      | Contents                                          |
+| ------------------------- | ------------------------------------------------- |
+| `/feeds/all.ics`          | All persons' appointments and obligation due-dates.|
+| `/feeds/person/<id>.ics`  | One person's appointments and due-dates.          |
+| `/feeds/social.ics`       | Contact birthdays.                                |
+
+The dashboard and each person page link to the relevant feed URLs.
 
 ## Configuration
 
@@ -47,15 +66,76 @@ All config is environment-driven (prefix `HLIN_`), read at startup via
 | `HLIN_NTFY_URL`      | (unset)     | Optional ntfy base URL for the single outbound reminder channel.|
 | `HLIN_NTFY_TOPIC`    | (unset)     | Optional ntfy topic.                                           |
 
+## Reminders (optional)
+
+`hlin` can POST a summary of overdue / due-soon obligations to an
+[ntfy](https://ntfy.sh) topic. There is no in-app scheduler, run the
+command from cron or a systemd timer:
+
+```sh
+uv run flask --app hlin remind            # send if HLIN_NTFY_* are set
+uv run flask --app hlin remind --dry-run  # print the message instead
+```
+
+Set `HLIN_NTFY_URL` (the ntfy base URL) and `HLIN_NTFY_TOPIC`. With nothing
+due, no notification is sent. With ntfy unset, the command prints the
+message instead of sending.
+
+> The reminder contains household names and appointment kinds. Point ntfy
+> at a self-hosted server or an unguessable, access-controlled topic, not a
+> public `ntfy.sh` topic.
+
+## Deployment
+
+Ships as a single container. The image runs gunicorn on port 8000 as a
+non-root user and keeps the SQLite database on a `/data` volume. On every
+start the entrypoint applies pending migrations (`alembic upgrade head`),
+so a fresh volume is initialised automatically.
+
+```sh
+docker compose up -d --build
+docker compose exec hlin flask --app hlin seed   # once, after first start
+```
+
+TLS is assumed to terminate upstream at your reverse proxy; the container
+serves plain HTTP on the trusted network. Point the proxy at port 8000 (or
+bind it to localhost in `docker-compose.yml` if the proxy shares the host).
+
+Send reminders on a schedule from the host's cron or a systemd timer:
+
+```sh
+docker compose exec -T hlin flask --app hlin remind
+```
+
+Configure via the environment variables documented above, set in
+`docker-compose.yml` or an `.env` file Compose reads.
+
 ## Backup
 
 The SQLite file at `HLIN_DB_PATH` is the single source of truth. Take a
-consistent snapshot for an external (e.g. Restic) job with the SQLite
-backup API:
+*consistent* snapshot (not a copy of the live file, which may be mid-write)
+with the SQLite backup API, then let an external Restic job pick up the
+snapshot.
+
+Containerised (the slim image has Python, not the `sqlite3` CLI):
 
 ```sh
-sqlite3 "$HLIN_DB_PATH" ".backup '/path/to/snapshot/hlin.db'"
+docker compose exec -T hlin python - <<'PY'
+import sqlite3
+src = sqlite3.connect("/data/hlin.db")
+dst = sqlite3.connect("/data/hlin-backup.db")
+with dst:
+    src.backup(dst)
+dst.close()
+src.close()
+PY
 ```
 
-Back up the snapshot, not the live file, so the copy is crash-consistent
-even while the app is writing.
+Local / dev, with the `sqlite3` CLI:
+
+```sh
+sqlite3 "$HLIN_DB_PATH" ".backup hlin-backup.db"
+```
+
+Point Restic at the resulting `hlin-backup.db` (inside the `hlin-data`
+volume), not the live database.
