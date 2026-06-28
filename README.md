@@ -14,8 +14,8 @@ names so harm does not slip through.
 > household seed, recall logic, read-only `.ics` feeds, the dashboard and
 > per-person pages, the quick-add / logging write flow (add appointment,
 > add obligation, log an outcome which advances the matching obligation),
-> and the contacts directory. Still to come: the optional ntfy reminder
-> and the container packaging (Dockerfile + compose).
+> the contacts directory, and the optional ntfy reminder. Still to come:
+> the container packaging (Dockerfile + compose).
 
 ## Stack
 
@@ -30,6 +30,7 @@ uv sync                              # install deps + project
 uv run alembic upgrade head          # create / migrate the SQLite DB
 uv run flask --app hlin seed         # seed the household (idempotent)
 uv run flask --app hlin run          # dev server (http://127.0.0.1:5000)
+uv run flask --app hlin remind --dry-run   # preview the ntfy reminder
 uv run pytest                        # tests
 uv run ruff check hlin tests         # lint
 ```
@@ -64,6 +65,25 @@ All config is environment-driven (prefix `HLIN_`), read at startup via
 | `HLIN_SHARED_CREDENTIAL` | (unset) | Single shared household credential; unset == trust the network.|
 | `HLIN_NTFY_URL`      | (unset)     | Optional ntfy base URL for the single outbound reminder channel.|
 | `HLIN_NTFY_TOPIC`    | (unset)     | Optional ntfy topic.                                           |
+
+## Reminders (optional)
+
+`hlin` can POST a summary of overdue / due-soon obligations to an
+[ntfy](https://ntfy.sh) topic. There is no in-app scheduler, run the
+command from cron or a systemd timer:
+
+```sh
+uv run flask --app hlin remind            # send if HLIN_NTFY_* are set
+uv run flask --app hlin remind --dry-run  # print the message instead
+```
+
+Set `HLIN_NTFY_URL` (the ntfy base URL) and `HLIN_NTFY_TOPIC`. With nothing
+due, no notification is sent. With ntfy unset, the command prints the
+message instead of sending.
+
+> The reminder contains household names and appointment kinds. Point ntfy
+> at a self-hosted server or an unguessable, access-controlled topic, not a
+> public `ntfy.sh` topic.
 
 ## Backup
 
