@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- builder: resolve deps + install the project into /app/.venv --------
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Pinned uv (bump in lockstep with the dev toolchain).
 COPY --from=ghcr.io/astral-sh/uv:0.11.25 /uv /uvx /bin/
@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 # ---- runtime ------------------------------------------------------------
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
