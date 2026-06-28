@@ -69,10 +69,6 @@ def non_friend_contacts(session: Session) -> Sequence[Contact]:
     ).all()
 
 
-def get_contact(session: Session, contact_id: int) -> Contact | None:
-    return session.get(Contact, contact_id)
-
-
 # --- per-person derivations (operate on a loaded Person) -----------------
 
 

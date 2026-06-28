@@ -16,7 +16,7 @@ in ``web/feeds.py`` supply the session-loaded objects and ``today``.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from icalendar import Calendar, Event
 
@@ -35,10 +35,16 @@ def _calendar(name: str) -> Calendar:
     return cal
 
 
-def _appointment_event(appointment: Appointment, person_name: str) -> Event:
+def _event(uid: str, summary: str) -> Event:
     event = Event()
-    event.add("uid", f"appointment-{appointment.id}@{_DOMAIN}")
-    event.add("summary", f"{person_name} {appointment.kind}")
+    event.add("uid", uid)
+    event.add("dtstamp", datetime.now(UTC))  # RFC 5545 requires DTSTAMP in a VEVENT
+    event.add("summary", summary)
+    return event
+
+
+def _appointment_event(appointment: Appointment, person_name: str) -> Event:
+    event = _event(f"appointment-{appointment.id}@{_DOMAIN}", f"{person_name} {appointment.kind}")
     event.add("dtstart", appointment.scheduled_at)  # datetime -> timed VEVENT
     event.add("dtend", appointment.scheduled_at + timedelta(hours=1))
     if appointment.outcome:
@@ -47,18 +53,14 @@ def _appointment_event(appointment: Appointment, person_name: str) -> Event:
 
 
 def _obligation_event(person_name: str, kind: str, uid_id: int, due: date) -> Event:
-    event = Event()
-    event.add("uid", f"obligation-{uid_id}-due@{_DOMAIN}")
-    event.add("summary", f"{person_name} {kind} due")
+    event = _event(f"obligation-{uid_id}-due@{_DOMAIN}", f"{person_name} {kind} due")
     event.add("dtstart", due)  # date -> all-day VEVENT
     event.add("dtend", due + timedelta(days=1))
     return event
 
 
 def _birthday_event(contact: Contact) -> Event:
-    event = Event()
-    event.add("uid", f"birthday-{contact.id}@{_DOMAIN}")
-    event.add("summary", f"{contact.name} birthday")
+    event = _event(f"birthday-{contact.id}@{_DOMAIN}", f"{contact.name} birthday")
     event.add("dtstart", contact.birthday)  # date -> all-day VEVENT
     event.add("dtend", contact.birthday + timedelta(days=1))
     event.add("rrule", {"freq": "yearly"})

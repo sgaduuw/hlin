@@ -134,3 +134,17 @@ def test_combined_feed_spans_all_persons(session):
     events = _events(feeds.combined_calendar([alice, bob], today=TODAY))
     summaries = {str(e["summary"]) for e in events}
     assert summaries == {"Alice tandarts due", "Bob tandarts due"}
+
+
+def test_events_carry_dtstamp(session):
+    """RFC 5545 requires DTSTAMP in every VEVENT."""
+    person = _child(session)
+    session.add(
+        RecurringObligation(
+            person_id=person.id, kind="tandarts", interval_months=6, last_done=date(2026, 1, 1)
+        )
+    )
+    session.commit()
+    session.refresh(person)
+    ics = feeds.to_ics(feeds.person_calendar(person, today=TODAY)).decode()
+    assert "DTSTAMP:" in ics
