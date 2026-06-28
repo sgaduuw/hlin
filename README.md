@@ -10,11 +10,12 @@ calendar client itself.
 Named for **Hlín**, the Norse goddess who watches over the people Frigg
 names so harm does not slip through.
 
-> **Status: early WIP.** The data model, migrations, household seed,
-> recall logic, read-only `.ics` feeds, and the read views (dashboard +
-> per-person page) are in place. Still to come: the quick-add/logging
-> write flow, the contacts directory page, the optional ntfy reminder,
-> and the container packaging.
+> **Status: WIP, core usable.** In place: the data model, migrations,
+> household seed, recall logic, read-only `.ics` feeds, the dashboard and
+> per-person pages, the quick-add / logging write flow (add appointment,
+> add obligation, log an outcome which advances the matching obligation),
+> and the contacts directory. Still to come: the optional ntfy reminder
+> and the container packaging (Dockerfile + compose).
 
 ## Stack
 

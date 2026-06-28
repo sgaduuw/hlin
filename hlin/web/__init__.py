@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from flask import Flask
 
-from . import feeds, views
+from . import contacts, feeds, views
 
 
 def register(app: Flask) -> None:
     app.register_blueprint(views.bp)
+    app.register_blueprint(contacts.bp)
     app.register_blueprint(feeds.bp)

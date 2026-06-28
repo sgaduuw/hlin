@@ -14,11 +14,25 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Appointment, AppointmentStatus, Contact, Person, RecurringObligation
+from .models import (
+    Appointment,
+    AppointmentStatus,
+    Contact,
+    ContactKind,
+    Person,
+    RecurringObligation,
+    Role,
+)
 
 
 def list_persons(session: Session) -> Sequence[Person]:
     return session.scalars(select(Person).order_by(Person.role, Person.name)).all()
+
+
+def list_children(session: Session) -> Sequence[Person]:
+    return session.scalars(
+        select(Person).where(Person.role == Role.CHILD).order_by(Person.name)
+    ).all()
 
 
 def get_person(session: Session, person_id: int) -> Person | None:
@@ -39,6 +53,24 @@ def booked_appointments(session: Session) -> Sequence[Appointment]:
 
 def list_contacts(session: Session) -> Sequence[Contact]:
     return session.scalars(select(Contact).order_by(Contact.name)).all()
+
+
+def list_parent_contacts(session: Session) -> Sequence[Contact]:
+    """Contacts usable as a friend's parent (for the parent picker)."""
+    return session.scalars(
+        select(Contact).where(Contact.kind == ContactKind.PARENT).order_by(Contact.name)
+    ).all()
+
+
+def non_friend_contacts(session: Session) -> Sequence[Contact]:
+    """Parents / family / other, shown in their own directory section."""
+    return session.scalars(
+        select(Contact).where(Contact.kind != ContactKind.FRIEND).order_by(Contact.name)
+    ).all()
+
+
+def get_contact(session: Session, contact_id: int) -> Contact | None:
+    return session.get(Contact, contact_id)
 
 
 # --- per-person derivations (operate on a loaded Person) -----------------
