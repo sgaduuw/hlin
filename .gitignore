@@ -20,6 +20,8 @@ build/
 *.db
 *.db-wal
 *.db-shm
+# Auto-generated session signing key (when HLIN_SECRET_KEY is unset)
+.hlin-secret-key
 
 # macOS
 .DS_Store

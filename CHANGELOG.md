@@ -6,6 +6,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-29
+
+Adds web-based administration so the household can manage everything from the
+UI, not just the CLI, with editing gated behind login.
+
+### Added
+- Multi-user login (minimal: username + werkzeug password hash, no roles,
+  no self-registration), managed via the `flask --app hlin user`
+  add/list/remove commands. New settings: `HLIN_SECRET_KEY` (session
+  signing; persisted beside the database when unset, stable across gunicorn
+  workers), `HLIN_SESSION_COOKIE_SECURE` (mark the cookie Secure behind an
+  HTTPS proxy), and `HLIN_REQUIRE_LOGIN` (gate reads too).
+- Full inline CRUD behind login: add/edit/delete persons, appointments,
+  obligations (with an active toggle), vaccinations, and contacts, edited
+  in place via htmx fragments on the existing pages. Child rows are
+  ownership-checked against the person in the URL.
+
+### Changed
+- Reads stay open by default, but sensitive fields (BSN, medical/admin
+  notes, appointment outcomes and follow-ups, vaccination records) are now
+  redacted for anonymous viewers; the schedule itself stays visible. Every
+  mutation requires login. Supersedes the spec's single-shared-credential
+  constraint.
+
+### Security
+- The anonymous `.ics` feeds no longer embed the appointment outcome in the
+  event description (present since 0.1.0); the outcome is a
+  redacted-for-anonymous field. The login redirect target is hardened
+  against backslash / control-character open-redirect bypasses, the session
+  cookie is `SameSite=Lax`, and an unknown username runs a dummy password
+  compare to avoid a timing oracle.
+
 ## [0.1.0] - 2026-06-29
 
 First release: a self-hosted household care and contacts tracker that feeds
@@ -36,5 +68,6 @@ an existing CalDAV setup rather than replacing it.
 - Tier-C CI: PR-gated lint / format / tests / hadolint / image build, and a
   tag-triggered image publish to GHCR.
 
-[Unreleased]: https://github.com/sgaduuw/hlin/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/sgaduuw/hlin/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/sgaduuw/hlin/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sgaduuw/hlin/releases/tag/v0.1.0

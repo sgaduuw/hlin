@@ -44,11 +44,13 @@ def _event(uid: str, summary: str) -> Event:
 
 
 def _appointment_event(appointment: Appointment, person_name: str) -> Event:
+    # Who/what/when only. The outcome is sensitive (redacted for anonymous
+    # viewers in the web UI) and these feeds are anonymous-readable, so it must
+    # never reach the event body. A booked appointment can still carry an
+    # outcome if its status was edited back from done, hence no exception here.
     event = _event(f"appointment-{appointment.id}@{_DOMAIN}", f"{person_name} {appointment.kind}")
     event.add("dtstart", appointment.scheduled_at)  # datetime -> timed VEVENT
     event.add("dtend", appointment.scheduled_at + timedelta(hours=1))
-    if appointment.outcome:
-        event.add("description", appointment.outcome)
     return event
 
 

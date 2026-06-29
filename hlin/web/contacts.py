@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from flask import Blueprint, abort, render_template, request
 
-from .. import commands, store
+from .. import auth, commands, store
 from ..db import SessionLocal
-from ..models import ContactKind
+from ..models import Contact, ContactKind
 from ._forms import parse_date
 
 bp = Blueprint("contacts", __name__, url_prefix="/contacts")
@@ -28,6 +28,22 @@ def _context(session) -> dict:
     }
 
 
+def _form_parent_id() -> int | None:
+    parent_id = request.form.get("parent_contact_id", "").strip()
+    return int(parent_id) if parent_id.isdigit() else None
+
+
+def _form_linked_person_ids() -> tuple[int, ...]:
+    return tuple(int(x) for x in request.form.getlist("linked_person_ids") if x.isdigit())
+
+
+def _require_contact(session, contact_id: int) -> Contact:
+    contact = session.get(Contact, contact_id)
+    if contact is None:
+        abort(404)
+    return contact
+
+
 @bp.get("/")
 def index():
     with SessionLocal() as session:
@@ -35,23 +51,54 @@ def index():
 
 
 @bp.post("/")
+@auth.login_required
 def add():
     with SessionLocal() as session:
         name = request.form.get("name", "").strip()
         if not name:
             abort(400)
-        parent_id = request.form.get("parent_contact_id", "").strip()
         commands.add_contact(
             session,
             name=name,
             kind=ContactKind(request.form.get("kind", "friend")),
-            parent_contact_id=int(parent_id) if parent_id.isdigit() else None,
+            parent_contact_id=_form_parent_id(),
             phone=request.form.get("phone", "").strip() or None,
             email=request.form.get("email", "").strip() or None,
             birthday=parse_date(request.form.get("birthday")),
-            linked_person_ids=tuple(
-                int(x) for x in request.form.getlist("linked_person_ids") if x.isdigit()
-            ),
+            linked_person_ids=_form_linked_person_ids(),
         )
+        session.commit()
+        return render_template("_contacts_main.html", **_context(session))
+
+
+@bp.post("/<int:contact_id>/edit")
+@auth.login_required
+def edit(contact_id: int):
+    with SessionLocal() as session:
+        contact = _require_contact(session, contact_id)
+        name = request.form.get("name", "").strip()
+        if not name:
+            abort(400)
+        commands.update_contact(
+            session,
+            contact,
+            name=name,
+            kind=ContactKind(request.form.get("kind", "friend")),
+            parent_contact_id=_form_parent_id(),
+            phone=request.form.get("phone", "").strip() or None,
+            email=request.form.get("email", "").strip() or None,
+            birthday=parse_date(request.form.get("birthday")),
+            linked_person_ids=_form_linked_person_ids(),
+        )
+        session.commit()
+        return render_template("_contacts_main.html", **_context(session))
+
+
+@bp.post("/<int:contact_id>/delete")
+@auth.login_required
+def delete(contact_id: int):
+    with SessionLocal() as session:
+        contact = _require_contact(session, contact_id)
+        session.delete(contact)
         session.commit()
         return render_template("_contacts_main.html", **_context(session))
