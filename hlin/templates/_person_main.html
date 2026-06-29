@@ -1,5 +1,6 @@
 {# Person-page body. Rendered standalone by the write actions and swapped #}
 {# in by htmx (hx-target="#person-main"), so every form lives inside it.   #}
+{# Edit affordances and sensitive medical fields are gated on `logged_in`. #}
 <div id="person-main">
 <hgroup>
   <h1>{{ person.name }}</h1>
@@ -12,9 +13,13 @@
     <ul>
       {% if person.huisarts %}<li>Huisarts: {{ person.huisarts }}</li>{% endif %}
       {% if person.tandarts %}<li>Tandarts: {{ person.tandarts }}</li>{% endif %}
-      {% if person.bsn %}<li>BSN: {{ person.bsn }}</li>{% endif %}
+      {% if logged_in and person.bsn %}<li>BSN: {{ person.bsn }}</li>{% endif %}
     </ul>
-    {% if person.notes %}<p>{{ person.notes }}</p>{% endif %}
+    {% if logged_in %}
+      {% if person.notes %}<p>{{ person.notes }}</p>{% endif %}
+    {% elif person.bsn or person.notes %}
+      <p><small>🔒 BSN and medical notes hidden. <a href="{{ url_for('auth.login') }}">Log in</a> to view.</small></p>
+    {% endif %}
   </article>
   <article>
     <header><strong>Recurring obligations</strong></header>
@@ -28,6 +33,7 @@
       </tbody>
     </table>
     {% else %}<p>None.</p>{% endif %}
+    {% if logged_in %}
     <details>
       <summary role="button" class="secondary outline">Add obligation</summary>
       <form hx-post="{{ url_for('views.add_obligation', person_id=person.id) }}" hx-target="#person-main" hx-swap="outerHTML">
@@ -39,15 +45,19 @@
         <button type="submit">Add obligation</button>
       </form>
     </details>
+    {% endif %}
   </article>
 </div>
 
+{% if logged_in %}
 <h2>Open follow-ups</h2>
 {% if follow_ups %}
 <ul>{% for a in follow_ups %}<li><strong>{{ a.kind }}</strong>: {{ a.next_action }}</li>{% endfor %}</ul>
 {% else %}<p>None.</p>{% endif %}
+{% endif %}
 
 <h2>Appointments</h2>
+{% if logged_in %}
 <details>
   <summary role="button" class="secondary outline">Add appointment</summary>
   <form hx-post="{{ url_for('views.add_appointment', person_id=person.id) }}" hx-target="#person-main" hx-swap="outerHTML">
@@ -62,6 +72,7 @@
     <button type="submit">Add appointment</button>
   </form>
 </details>
+{% endif %}
 {% if appointments %}
 <table>
   <thead><tr><th>Kind</th><th>When</th><th>Status</th><th>Outcome / follow-up</th></tr></thead>
@@ -72,7 +83,9 @@
       <td>{{ a.scheduled_at.strftime('%Y-%m-%d %H:%M') if a.scheduled_at else 'unscheduled' }}</td>
       <td>{{ a.status.value }}</td>
       <td>
-        {% if a.status.value == 'done' %}
+        {% if not logged_in %}
+          <small>🔒</small>
+        {% elif a.status.value == 'done' %}
           {{ a.outcome or '' }}{% if a.next_action %}<br><small>follow-up: {{ a.next_action }}</small>{% endif %}
         {% else %}
           <details>
@@ -91,6 +104,7 @@
 </table>
 {% else %}<p>None yet.</p>{% endif %}
 
+{% if logged_in %}
 <h2>Vaccinations</h2>
 {% if person.vaccinations %}
 <table>
@@ -102,6 +116,7 @@
   </tbody>
 </table>
 {% else %}<p>None recorded.</p>{% endif %}
+{% endif %}
 
 {% if person.role.value == 'child' and person.friends %}
 <h2>Friends</h2>

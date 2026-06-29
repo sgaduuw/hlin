@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from flask import Blueprint, abort, render_template, request
 
-from .. import commands, store
+from .. import auth, commands, store
 from ..db import SessionLocal
 from ..models import ContactKind
 from ._forms import parse_date
@@ -35,6 +35,7 @@ def index():
 
 
 @bp.post("/")
+@auth.login_required
 def add():
     with SessionLocal() as session:
         name = request.form.get("name", "").strip()

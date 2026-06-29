@@ -36,6 +36,7 @@
 </table>
 {% endif %}
 
+{% if logged_in %}
 <h2>Add contact</h2>
 <p><small>To attach a friend to their parent, add the parent first (type "parent"); it then appears in the parent picker.</small></p>
 <form hx-post="{{ url_for('contacts.add') }}" hx-target="#contacts-main" hx-swap="outerHTML">
@@ -68,4 +69,5 @@
   {% endif %}
   <button type="submit">Add contact</button>
 </form>
+{% endif %}
 </div>

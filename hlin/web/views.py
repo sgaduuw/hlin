@@ -14,7 +14,7 @@ from datetime import date
 
 from flask import Blueprint, abort, render_template, request
 
-from .. import commands, store
+from .. import auth, commands, store
 from ..db import SessionLocal
 from ..models import APPOINTMENT_KINDS, Appointment, AppointmentStatus, Role
 from ..recall import next_due_date, obligations_needing_attention
@@ -83,6 +83,7 @@ def person(person_id: int):
 
 
 @bp.post("/person/<int:person_id>/appointment")
+@auth.login_required
 def add_appointment(person_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
@@ -102,6 +103,7 @@ def add_appointment(person_id: int):
 
 
 @bp.post("/person/<int:person_id>/obligation")
+@auth.login_required
 def add_obligation(person_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
@@ -122,6 +124,7 @@ def add_obligation(person_id: int):
 
 
 @bp.post("/person/<int:person_id>/appointment/<int:appointment_id>/outcome")
+@auth.login_required
 def log_outcome(person_id: int, appointment_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)

@@ -22,9 +22,14 @@ class Settings(BaseSettings):
     # many days show on the dashboard "Coming up / Overdue" panel.
     horizon_days: int = 60
 
-    # Single shared household credential (optional). None == trust the
-    # network (document the assumption in the README).
-    shared_credential: str | None = None
+    # Flask session signing key. Required in production for login sessions
+    # to survive a restart; if unset, a per-process ephemeral key is used
+    # (fine for dev, logs everyone out on restart).
+    secret_key: str | None = None
+
+    # If set, reads also require login (full lockdown). Off by default:
+    # reads are open and only sensitive fields are redacted for anonymous.
+    require_login: bool = False
 
     # Optional single outbound reminder channel.
     ntfy_url: str | None = None
