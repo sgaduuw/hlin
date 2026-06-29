@@ -20,15 +20,62 @@
     {% elif person.bsn or person.notes %}
       <p><small>🔒 BSN and medical notes hidden. <a href="{{ url_for('auth.login') }}">Log in</a> to view.</small></p>
     {% endif %}
+    {% if logged_in %}
+    <footer>
+      <details>
+        <summary role="button" class="secondary outline">Edit person</summary>
+        <form hx-post="{{ url_for('views.edit_person', person_id=person.id) }}" hx-target="#person-main" hx-swap="outerHTML">
+          <input name="name" value="{{ person.name }}" placeholder="name" required>
+          <div class="grid">
+            <select name="role" aria-label="role">
+              {% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == person.role.value }}>{{ r }}</option>{% endfor %}
+            </select>
+            <input name="date_of_birth" type="date" value="{{ person.date_of_birth or '' }}" aria-label="date of birth">
+          </div>
+          <input name="bsn" value="{{ person.bsn or '' }}" placeholder="BSN">
+          <div class="grid">
+            <input name="huisarts" value="{{ person.huisarts or '' }}" placeholder="huisarts">
+            <input name="tandarts" value="{{ person.tandarts or '' }}" placeholder="tandarts">
+          </div>
+          <textarea name="notes" placeholder="medical / admin notes" rows="2">{{ person.notes or '' }}</textarea>
+          <button type="submit">Save</button>
+        </form>
+      </details>
+      <button class="secondary outline"
+              hx-post="{{ url_for('views.delete_person', person_id=person.id) }}"
+              hx-confirm="Delete {{ person.name }} and all their records?">Delete person</button>
+    </footer>
+    {% endif %}
   </article>
   <article>
     <header><strong>Recurring obligations</strong></header>
     {% if ob_rows %}
     <table>
-      <thead><tr><th>Kind</th><th>Every</th><th>Last done</th><th>Next due</th></tr></thead>
+      <thead><tr><th>Kind</th><th>Every</th><th>Last done</th><th>Next due</th>{% if logged_in %}<th></th>{% endif %}</tr></thead>
       <tbody>
       {% for o, next_due in ob_rows %}
-        <tr><td>{{ o.kind }}</td><td>{{ o.interval_months }} mo</td><td>{{ o.last_done or 'never' }}</td><td>{{ next_due }}</td></tr>
+        <tr>
+          <td>{{ o.kind }}</td><td>{{ o.interval_months }} mo</td><td>{{ o.last_done or 'never' }}</td><td>{{ next_due }}</td>
+          {% if logged_in %}
+          <td>
+            <details>
+              <summary role="button" class="secondary outline">Edit</summary>
+              <form hx-post="{{ url_for('views.edit_obligation', person_id=person.id, obligation_id=o.id) }}" hx-target="#person-main" hx-swap="outerHTML">
+                <input name="kind" list="kinds" value="{{ o.kind }}" required>
+                <div class="grid">
+                  <input name="interval_months" type="number" min="1" value="{{ o.interval_months }}" required>
+                  <input name="last_done" type="date" value="{{ o.last_done or '' }}" aria-label="last done">
+                </div>
+                <label><input type="checkbox" name="active" {{ 'checked' if o.active }}> active</label>
+                <button type="submit">Save</button>
+              </form>
+            </details>
+            <button class="secondary outline"
+                    hx-post="{{ url_for('views.delete_obligation', person_id=person.id, obligation_id=o.id) }}"
+                    hx-confirm="Delete this obligation?">Delete</button>
+          </td>
+          {% endif %}
+        </tr>
       {% endfor %}
       </tbody>
     </table>
@@ -75,7 +122,7 @@
 {% endif %}
 {% if appointments %}
 <table>
-  <thead><tr><th>Kind</th><th>When</th><th>Status</th><th>Outcome / follow-up</th></tr></thead>
+  <thead><tr><th>Kind</th><th>When</th><th>Status</th><th>Outcome / follow-up</th>{% if logged_in %}<th></th>{% endif %}</tr></thead>
   <tbody>
   {% for a in appointments %}
     <tr>
@@ -98,6 +145,26 @@
           </details>
         {% endif %}
       </td>
+      {% if logged_in %}
+      <td>
+        <details>
+          <summary role="button" class="secondary outline">Edit</summary>
+          <form hx-post="{{ url_for('views.edit_appointment', person_id=person.id, appointment_id=a.id) }}" hx-target="#person-main" hx-swap="outerHTML">
+            <input name="kind" list="kinds" value="{{ a.kind }}" required>
+            <div class="grid">
+              <input name="scheduled_at" type="datetime-local" value="{{ a.scheduled_at.strftime('%Y-%m-%dT%H:%M') if a.scheduled_at else '' }}" aria-label="when">
+              <select name="status" aria-label="status">
+                {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == a.status.value }}>{{ s }}</option>{% endfor %}
+              </select>
+            </div>
+            <button type="submit">Save</button>
+          </form>
+        </details>
+        <button class="secondary outline"
+                hx-post="{{ url_for('views.delete_appointment', person_id=person.id, appointment_id=a.id) }}"
+                hx-confirm="Delete this appointment?">Delete</button>
+      </td>
+      {% endif %}
     </tr>
   {% endfor %}
   </tbody>
@@ -108,14 +175,45 @@
 <h2>Vaccinations</h2>
 {% if person.vaccinations %}
 <table>
-  <thead><tr><th>Date</th><th>Vaccine</th><th>Where</th></tr></thead>
+  <thead><tr><th>Date</th><th>Vaccine</th><th>Where</th><th></th></tr></thead>
   <tbody>
   {% for v in person.vaccinations %}
-    <tr><td>{{ v.date or '' }}</td><td>{{ v.vaccine }}</td><td>{{ v.where or '' }}</td></tr>
+    <tr>
+      <td>{{ v.date or '' }}</td><td>{{ v.vaccine }}</td><td>{{ v.where or '' }}</td>
+      <td>
+        <details>
+          <summary role="button" class="secondary outline">Edit</summary>
+          <form hx-post="{{ url_for('views.edit_vaccination', person_id=person.id, vaccination_id=v.id) }}" hx-target="#person-main" hx-swap="outerHTML">
+            <div class="grid">
+              <input name="vaccine" value="{{ v.vaccine }}" required>
+              <input name="date" type="date" value="{{ v.date or '' }}" aria-label="date">
+            </div>
+            <input name="where" value="{{ v.where or '' }}" placeholder="where">
+            <input name="notes" value="{{ v.notes or '' }}" placeholder="notes">
+            <button type="submit">Save</button>
+          </form>
+        </details>
+        <button class="secondary outline"
+                hx-post="{{ url_for('views.delete_vaccination', person_id=person.id, vaccination_id=v.id) }}"
+                hx-confirm="Delete this vaccination record?">Delete</button>
+      </td>
+    </tr>
   {% endfor %}
   </tbody>
 </table>
 {% else %}<p>None recorded.</p>{% endif %}
+<details>
+  <summary role="button" class="secondary outline">Add vaccination</summary>
+  <form hx-post="{{ url_for('views.add_vaccination', person_id=person.id) }}" hx-target="#person-main" hx-swap="outerHTML">
+    <div class="grid">
+      <input name="vaccine" placeholder="vaccine" required>
+      <input name="date" type="date" aria-label="date (optional)">
+    </div>
+    <input name="where" placeholder="where (optional)">
+    <input name="notes" placeholder="notes (optional)">
+    <button type="submit">Add vaccination</button>
+  </form>
+</details>
 {% endif %}
 
 {% if person.role.value == 'child' and person.friends %}

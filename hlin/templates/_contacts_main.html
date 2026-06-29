@@ -1,4 +1,45 @@
 {# Contacts directory body, swapped in by htmx (hx-target="#contacts-main"). #}
+
+{% macro contact_actions(c) %}
+<details>
+  <summary role="button" class="secondary outline">Edit</summary>
+  {% set linked_ids = c.linked_persons | map(attribute='id') | list %}
+  <form hx-post="{{ url_for('contacts.edit', contact_id=c.id) }}" hx-target="#contacts-main" hx-swap="outerHTML">
+    <div class="grid">
+      <input name="name" value="{{ c.name }}" required>
+      <select name="kind" aria-label="type">
+        {% for k in contact_kinds %}<option value="{{ k }}" {{ 'selected' if k == c.kind.value }}>{{ k }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="grid">
+      <input name="phone" value="{{ c.phone or '' }}" placeholder="phone">
+      <input name="email" type="email" value="{{ c.email or '' }}" placeholder="email">
+      <input name="birthday" type="date" value="{{ c.birthday or '' }}" aria-label="birthday">
+    </div>
+    {% if children %}
+    <fieldset>
+      <legend>Friend of:</legend>
+      {% for child in children %}
+      <label><input type="checkbox" name="linked_person_ids" value="{{ child.id }}" {{ 'checked' if child.id in linked_ids }}> {{ child.name }}</label>
+      {% endfor %}
+    </fieldset>
+    {% endif %}
+    {% if parent_options %}
+    <label>Parent contact:
+      <select name="parent_contact_id">
+        <option value="">(none)</option>
+        {% for p in parent_options if p.id != c.id %}<option value="{{ p.id }}" {{ 'selected' if p.id == c.parent_contact_id }}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <button type="submit">Save</button>
+  </form>
+</details>
+<button class="secondary outline"
+        hx-post="{{ url_for('contacts.delete', contact_id=c.id) }}"
+        hx-confirm="Delete {{ c.name }}?">Delete</button>
+{% endmacro %}
+
 <div id="contacts-main">
 <hgroup>
   <h1>Contacts</h1>
@@ -9,7 +50,7 @@
 <h2>{{ child.name }}'s friends</h2>
 {% if child.friends %}
 <table>
-  <thead><tr><th>Name</th><th>Parent</th><th>Phone</th><th>Birthday</th></tr></thead>
+  <thead><tr><th>Name</th><th>Parent</th><th>Phone</th><th>Birthday</th>{% if logged_in %}<th></th>{% endif %}</tr></thead>
   <tbody>
   {% for f in child.friends %}
     <tr>
@@ -17,6 +58,7 @@
       <td>{% if f.parent %}{{ f.parent.name }}{% if f.parent.phone %} ({{ f.parent.phone }}){% endif %}{% endif %}</td>
       <td>{{ f.phone or '' }}</td>
       <td>{{ f.birthday or '' }}</td>
+      {% if logged_in %}<td>{{ contact_actions(f) }}</td>{% endif %}
     </tr>
   {% endfor %}
   </tbody>
@@ -27,10 +69,13 @@
 {% if other_contacts %}
 <h2>Parents and other contacts</h2>
 <table>
-  <thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th></tr></thead>
+  <thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th>{% if logged_in %}<th></th>{% endif %}</tr></thead>
   <tbody>
   {% for c in other_contacts %}
-    <tr><td>{{ c.name }}</td><td>{{ c.kind.value }}</td><td>{{ c.phone or '' }}</td><td>{{ c.email or '' }}</td></tr>
+    <tr>
+      <td>{{ c.name }}</td><td>{{ c.kind.value }}</td><td>{{ c.phone or '' }}</td><td>{{ c.email or '' }}</td>
+      {% if logged_in %}<td>{{ contact_actions(c) }}</td>{% endif %}
+    </tr>
   {% endfor %}
   </tbody>
 </table>

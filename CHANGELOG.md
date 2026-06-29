@@ -6,6 +6,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Multi-user login (minimal: username + werkzeug password hash, no roles,
+  no self-registration), managed via the `flask --app hlin user`
+  add/list/remove commands. New `HLIN_SECRET_KEY` (session signing) and
+  `HLIN_REQUIRE_LOGIN` (gate reads too) settings.
+- Full inline CRUD behind login: add/edit/delete persons, appointments,
+  obligations (with an active toggle), vaccinations, and contacts, edited
+  in place via htmx fragments on the existing pages.
+
+### Changed
+- Reads stay open by default, but sensitive fields (BSN, medical/admin
+  notes, appointment outcomes and follow-ups, vaccination records) are now
+  redacted for anonymous viewers; the schedule itself stays visible. Every
+  mutation requires login. Supersedes the spec's single-shared-credential
+  constraint.
+
 ## [0.1.0] - 2026-06-29
 
 First release: a self-hosted household care and contacts tracker that feeds

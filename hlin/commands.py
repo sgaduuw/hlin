@@ -21,7 +21,15 @@ from .models import (
     ContactKind,
     Person,
     RecurringObligation,
+    Role,
+    VaccinationRecord,
 )
+
+
+def _linked_persons(session: Session, person_ids: tuple[int, ...]) -> list[Person]:
+    if not person_ids:
+        return []
+    return list(session.scalars(select(Person).where(Person.id.in_(person_ids))).all())
 
 
 def add_appointment(
@@ -106,9 +114,156 @@ def add_contact(
         email=email,
         birthday=birthday,
     )
-    if linked_person_ids:
-        contact.linked_persons.extend(
-            session.scalars(select(Person).where(Person.id.in_(linked_person_ids))).all()
-        )
+    contact.linked_persons = _linked_persons(session, linked_person_ids)
     session.add(contact)
     return contact
+
+
+# --- person ------------------------------------------------------------
+
+
+def add_person(
+    session: Session,
+    *,
+    name: str,
+    role: Role,
+    date_of_birth: date | None = None,
+    bsn: str | None = None,
+    huisarts: str | None = None,
+    tandarts: str | None = None,
+    notes: str | None = None,
+) -> Person:
+    person = Person(
+        name=name,
+        role=role,
+        date_of_birth=date_of_birth,
+        bsn=bsn,
+        huisarts=huisarts,
+        tandarts=tandarts,
+        notes=notes,
+    )
+    session.add(person)
+    return person
+
+
+def update_person(
+    session: Session,
+    person: Person,
+    *,
+    name: str,
+    role: Role,
+    date_of_birth: date | None,
+    bsn: str | None,
+    huisarts: str | None,
+    tandarts: str | None,
+    notes: str | None,
+) -> Person:
+    person.name = name
+    person.role = role
+    person.date_of_birth = date_of_birth
+    person.bsn = bsn or None
+    person.huisarts = huisarts or None
+    person.tandarts = tandarts or None
+    person.notes = notes or None
+    return person
+
+
+# --- appointment / obligation edits ------------------------------------
+
+
+def update_appointment(
+    session: Session,
+    appointment: Appointment,
+    *,
+    kind: str,
+    scheduled_at: datetime | None,
+    status: AppointmentStatus,
+) -> Appointment:
+    appointment.kind = kind
+    appointment.scheduled_at = scheduled_at
+    appointment.status = status
+    return appointment
+
+
+def update_obligation(
+    session: Session,
+    obligation: RecurringObligation,
+    *,
+    kind: str,
+    interval_months: int,
+    last_done: date | None,
+    active: bool,
+) -> RecurringObligation:
+    obligation.kind = kind
+    obligation.interval_months = interval_months
+    obligation.last_done = last_done
+    obligation.active = active
+    return obligation
+
+
+# --- vaccination -------------------------------------------------------
+
+
+def add_vaccination(
+    session: Session,
+    person_id: int,
+    *,
+    vaccine: str,
+    date: date | None = None,
+    where: str | None = None,
+    notes: str | None = None,
+) -> VaccinationRecord:
+    record = VaccinationRecord(
+        person_id=person_id, vaccine=vaccine, date=date, where=where, notes=notes
+    )
+    session.add(record)
+    return record
+
+
+def update_vaccination(
+    session: Session,
+    record: VaccinationRecord,
+    *,
+    vaccine: str,
+    date: date | None,
+    where: str | None,
+    notes: str | None,
+) -> VaccinationRecord:
+    record.vaccine = vaccine
+    record.date = date
+    record.where = where or None
+    record.notes = notes or None
+    return record
+
+
+# --- contact edit ------------------------------------------------------
+
+
+def update_contact(
+    session: Session,
+    contact: Contact,
+    *,
+    name: str,
+    kind: ContactKind,
+    parent_contact_id: int | None,
+    phone: str | None,
+    email: str | None,
+    birthday: date | None,
+    linked_person_ids: tuple[int, ...],
+) -> Contact:
+    contact.name = name
+    contact.kind = kind
+    # A contact cannot be its own parent.
+    contact.parent_contact_id = parent_contact_id if parent_contact_id != contact.id else None
+    contact.phone = phone or None
+    contact.email = email or None
+    contact.birthday = birthday
+    contact.linked_persons = _linked_persons(session, linked_person_ids)
+    return contact
+
+
+# --- delete (relies on FK cascades for children/links) -----------------
+
+
+def delete(session: Session, instance: object) -> None:
+    session.delete(instance)
