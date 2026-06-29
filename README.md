@@ -64,7 +64,8 @@ All config is environment-driven (prefix `HLIN_`), read at startup via
 | -------------------- | ----------- | -------------------------------------------------------------- |
 | `HLIN_DB_PATH`       | `hlin.db`   | On-disk SQLite path (the single backup target).                |
 | `HLIN_HORIZON_DAYS`  | `60`        | Recall window for the "Coming up / Overdue" dashboard panel.   |
-| `HLIN_SECRET_KEY`    | (unset)     | Flask session signing key. Set a stable random value in production; if unset, an ephemeral per-process key is used (logs everyone out on restart).|
+| `HLIN_SECRET_KEY`    | (unset)     | Flask session signing key. If unset, a key is generated once and persisted as `.hlin-secret-key` beside the database, stable across gunicorn workers and restarts. Set it explicitly to keep the key out of the data volume or share it across hosts.|
+| `HLIN_SESSION_COOKIE_SECURE` | `false` | Mark the session cookie `Secure` (sent only over HTTPS). Leave off for plain-HTTP dev; set true in production, where TLS terminates at the reverse proxy.|
 | `HLIN_REQUIRE_LOGIN` | `false`     | When true, even reads require login (full lockdown). Off by default: reads are open and only sensitive fields are redacted for anonymous viewers.|
 | `HLIN_NTFY_URL`      | (unset)     | Optional ntfy base URL for the single outbound reminder channel.|
 | `HLIN_NTFY_TOPIC`    | (unset)     | Optional ntfy topic.                                           |
@@ -92,7 +93,10 @@ Containerised, the same commands run via `docker compose exec`:
 docker compose exec hlin flask --app hlin user add linda
 ```
 
-Set a stable `HLIN_SECRET_KEY` so login sessions survive a restart.
+Login sessions survive restarts out of the box (the signing key is persisted
+beside the database). Set `HLIN_SECRET_KEY` explicitly if you would rather
+keep the key out of the data volume, and `HLIN_SESSION_COOKIE_SECURE=true`
+behind your HTTPS reverse proxy.
 
 ## Reminders (optional)
 

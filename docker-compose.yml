@@ -6,9 +6,12 @@ services:
     environment:
       HLIN_DB_PATH: /data/hlin.db
       HLIN_HORIZON_DAYS: "60"
-      # Stable session signing key so logins survive a restart (see README).
-      # Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+      # Session signing key. Unset is fine: a key is generated once and kept
+      # as .hlin-secret-key on the data volume, stable across workers/restarts.
+      # Set it to keep the key off the volume: python -c "import secrets; print(secrets.token_hex(32))"
       # HLIN_SECRET_KEY: change-me
+      # Mark the session cookie Secure (TLS terminates at the proxy in front).
+      HLIN_SESSION_COOKIE_SECURE: "true"
       # Gate reads too (full lockdown). Off by default: reads open, sensitive
       # fields redacted for anonymous viewers.
       # HLIN_REQUIRE_LOGIN: "true"

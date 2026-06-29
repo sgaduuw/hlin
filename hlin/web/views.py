@@ -219,7 +219,6 @@ def edit_person(person_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
         commands.update_person(
-            session,
             target,
             name=name,
             role=_form_role(),
@@ -238,7 +237,7 @@ def edit_person(person_id: int):
 def delete_person(person_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
-        commands.delete(session, target)
+        session.delete(target)
         session.commit()
     return _redirect("views.dashboard")
 
@@ -253,7 +252,6 @@ def edit_appointment(person_id: int, appointment_id: int):
         target = _require_person(session, person_id)
         appointment = _require_child(session, Appointment, person_id, appointment_id)
         commands.update_appointment(
-            session,
             appointment,
             kind=kind,
             scheduled_at=parse_datetime(request.form.get("scheduled_at")),
@@ -269,7 +267,7 @@ def delete_appointment(person_id: int, appointment_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
         appointment = _require_child(session, Appointment, person_id, appointment_id)
-        commands.delete(session, appointment)
+        session.delete(appointment)
         session.commit()
         return _person_main(session, target)
 
@@ -285,7 +283,6 @@ def edit_obligation(person_id: int, obligation_id: int):
         target = _require_person(session, person_id)
         obligation = _require_child(session, RecurringObligation, person_id, obligation_id)
         commands.update_obligation(
-            session,
             obligation,
             kind=kind,
             interval_months=int(interval),
@@ -302,7 +299,7 @@ def delete_obligation(person_id: int, obligation_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
         obligation = _require_child(session, RecurringObligation, person_id, obligation_id)
-        commands.delete(session, obligation)
+        session.delete(obligation)
         session.commit()
         return _person_main(session, target)
 
@@ -337,7 +334,6 @@ def edit_vaccination(person_id: int, vaccination_id: int):
         target = _require_person(session, person_id)
         record = _require_child(session, VaccinationRecord, person_id, vaccination_id)
         commands.update_vaccination(
-            session,
             record,
             vaccine=vaccine,
             date=parse_date(request.form.get("date")),
@@ -354,6 +350,6 @@ def delete_vaccination(person_id: int, vaccination_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
         record = _require_child(session, VaccinationRecord, person_id, vaccination_id)
-        commands.delete(session, record)
+        session.delete(record)
         session.commit()
         return _person_main(session, target)

@@ -99,6 +99,6 @@ def edit(contact_id: int):
 def delete(contact_id: int):
     with SessionLocal() as session:
         contact = _require_contact(session, contact_id)
-        commands.delete(session, contact)
+        session.delete(contact)
         session.commit()
         return render_template("_contacts_main.html", **_context(session))

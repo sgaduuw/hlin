@@ -26,7 +26,9 @@ def login_submit():
     nxt = auth.safe_next(request.form.get("next")) or url_for("views.dashboard")
     with SessionLocal() as session:
         user = session.scalar(select(User).where(User.username == username))
-        if user is not None and auth.verify_password(user, password):
+        # verify_password runs a constant-time-ish dummy compare when user is
+        # None, so a missing username is indistinguishable from a wrong password.
+        if auth.verify_password(user, password):
             auth.log_in(user)
             return redirect(nxt)
     return (

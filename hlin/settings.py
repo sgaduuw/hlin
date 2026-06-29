@@ -22,10 +22,16 @@ class Settings(BaseSettings):
     # many days show on the dashboard "Coming up / Overdue" panel.
     horizon_days: int = 60
 
-    # Flask session signing key. Required in production for login sessions
-    # to survive a restart; if unset, a per-process ephemeral key is used
-    # (fine for dev, logs everyone out on restart).
+    # Flask session signing key. If unset, a key is generated once and
+    # persisted beside the database so it stays stable across gunicorn
+    # workers and restarts (see create_app). Set it explicitly to share a
+    # key across hosts or to keep it out of the data volume.
     secret_key: str | None = None
+
+    # Mark the session cookie Secure (browser only returns it over HTTPS).
+    # Default off so plain-HTTP dev works; set true in production, where TLS
+    # terminates at the reverse proxy in front of the app.
+    session_cookie_secure: bool = False
 
     # If set, reads also require login (full lockdown). Off by default:
     # reads are open and only sensitive fields are redacted for anonymous.

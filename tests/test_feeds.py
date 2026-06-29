@@ -136,6 +136,27 @@ def test_combined_feed_spans_all_persons(session):
     assert summaries == {"Alice tandarts due", "Bob tandarts due"}
 
 
+def test_booked_appointment_does_not_leak_outcome(session):
+    """The feed is anonymous-readable; the outcome is sensitive and must never
+    reach the event body, even if a booked appointment still carries one (e.g.
+    its status was edited back from done)."""
+    person = _child(session)
+    appointment = Appointment(
+        person_id=person.id,
+        kind="huisarts",
+        status=AppointmentStatus.BOOKED,
+        scheduled_at=datetime(2026, 7, 10, 9, 30, tzinfo=UTC),
+        outcome="referred to specialist; suspected condition",
+    )
+    session.add(appointment)
+    session.commit()
+    session.refresh(person)
+
+    ics = feeds.to_ics(feeds.person_calendar(person, today=TODAY)).decode()
+    assert "specialist" not in ics
+    assert "DESCRIPTION" not in ics
+
+
 def test_events_carry_dtstamp(session):
     """RFC 5545 requires DTSTAMP in every VEVENT."""
     person = _child(session)

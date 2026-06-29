@@ -147,7 +147,6 @@ def add_person(
 
 
 def update_person(
-    session: Session,
     person: Person,
     *,
     name: str,
@@ -172,7 +171,6 @@ def update_person(
 
 
 def update_appointment(
-    session: Session,
     appointment: Appointment,
     *,
     kind: str,
@@ -186,7 +184,6 @@ def update_appointment(
 
 
 def update_obligation(
-    session: Session,
     obligation: RecurringObligation,
     *,
     kind: str,
@@ -221,7 +218,6 @@ def add_vaccination(
 
 
 def update_vaccination(
-    session: Session,
     record: VaccinationRecord,
     *,
     vaccine: str,
@@ -260,10 +256,3 @@ def update_contact(
     contact.birthday = birthday
     contact.linked_persons = _linked_persons(session, linked_person_ids)
     return contact
-
-
-# --- delete (relies on FK cascades for children/links) -----------------
-
-
-def delete(session: Session, instance: object) -> None:
-    session.delete(instance)

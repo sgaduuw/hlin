@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import pathlib
 import secrets
 from importlib.metadata import PackageNotFoundError, version
 
@@ -16,11 +18,37 @@ except PackageNotFoundError:  # running from a source tree without install metad
     __version__ = "0.0.0"
 
 
+def _resolve_secret_key() -> str:
+    """A stable session signing key.
+
+    Prefer the configured key. Otherwise persist a generated key in a file
+    beside the database: gunicorn forks multiple workers that each build the
+    app, so a per-process ephemeral key would make a cookie minted by one
+    worker fail validation on another (the login feature then half-works).
+    ``O_EXCL`` makes the first worker to create the file win; the rest read
+    that value, so every worker and every restart converge on one key.
+    """
+    if settings.secret_key:
+        return settings.secret_key
+    key_path = pathlib.Path(settings.db_path).resolve().parent / ".hlin-secret-key"
+    try:
+        fd = os.open(key_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        pass
+    else:
+        with os.fdopen(fd, "w") as handle:
+            handle.write(secrets.token_hex(32))
+    return key_path.read_text().strip()
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
-    # A configured key keeps sessions valid across restarts; absent one, an
-    # ephemeral per-process key is fine for dev (logs everyone out on boot).
-    app.secret_key = settings.secret_key or secrets.token_hex(32)
+    app.secret_key = _resolve_secret_key()
+    # Session cookie hardening: Lax SameSite blocks cross-site POST (CSRF
+    # mitigation for the htmx form actions), HttpOnly is Flask's default, and
+    # Secure is opt-in via settings so plain-HTTP dev still works.
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = settings.session_cookie_secure
     # Keep rendered HTML tidy: strip the newline after a block tag and the
     # leading whitespace before one (spec UI requirement).
     app.jinja_env.trim_blocks = True
