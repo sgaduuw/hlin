@@ -24,6 +24,21 @@
 {% endif %}
 
 <h2>Household</h2>
+{% if logged_in %}
+<details>
+  <summary role="button" class="secondary outline">Add person</summary>
+  <form action="{{ url_for('views.add_person') }}" method="post">
+    <div class="grid">
+      <input name="name" placeholder="name" required>
+      <select name="role" aria-label="role">
+        {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+      </select>
+      <input name="date_of_birth" type="date" aria-label="date of birth (optional)">
+    </div>
+    <button type="submit">Add person</button>
+  </form>
+</details>
+{% endif %}
 {% for label, cards in groups %}
   {% if cards %}
   <h3>{{ label }}</h3>

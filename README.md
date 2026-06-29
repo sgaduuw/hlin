@@ -10,12 +10,14 @@ calendar client itself.
 Named for **Hlín**, the Norse goddess who watches over the people Frigg
 names so harm does not slip through.
 
-> **Status: v1 scope complete.** In place: the data model, migrations,
-> household seed, recall logic, read-only `.ics` feeds, the dashboard and
-> per-person pages, the quick-add / logging write flow (add appointment,
-> add obligation, log an outcome which advances the matching obligation),
-> the contacts directory, the optional ntfy reminder, and container
-> packaging (Dockerfile + Compose).
+> **Status: v1 scope complete, plus inline admin.** In place: the data
+> model, migrations, household seed, recall logic, read-only `.ics` feeds,
+> the dashboard and per-person pages, the quick-add / logging write flow
+> (add appointment, add obligation, log an outcome which advances the
+> matching obligation), full inline CRUD on persons, appointments,
+> obligations, vaccinations and contacts behind multi-user login, the
+> contacts directory, the optional ntfy reminder, and container packaging
+> (Dockerfile + Compose).
 
 ## Stack
 
@@ -62,9 +64,39 @@ All config is environment-driven (prefix `HLIN_`), read at startup via
 | -------------------- | ----------- | -------------------------------------------------------------- |
 | `HLIN_DB_PATH`       | `hlin.db`   | On-disk SQLite path (the single backup target).                |
 | `HLIN_HORIZON_DAYS`  | `60`        | Recall window for the "Coming up / Overdue" dashboard panel.   |
-| `HLIN_SHARED_CREDENTIAL` | (unset) | Single shared household credential; unset == trust the network.|
+| `HLIN_SECRET_KEY`    | (unset)     | Flask session signing key. If unset, a key is generated once and persisted as `.hlin-secret-key` beside the database, stable across gunicorn workers and restarts. Set it explicitly to keep the key out of the data volume or share it across hosts.|
+| `HLIN_SESSION_COOKIE_SECURE` | `false` | Mark the session cookie `Secure` (sent only over HTTPS). Leave off for plain-HTTP dev; set true in production, where TLS terminates at the reverse proxy.|
+| `HLIN_REQUIRE_LOGIN` | `false`     | When true, even reads require login (full lockdown). Off by default: reads are open and only sensitive fields are redacted for anonymous viewers.|
 | `HLIN_NTFY_URL`      | (unset)     | Optional ntfy base URL for the single outbound reminder channel.|
 | `HLIN_NTFY_TOPIC`    | (unset)     | Optional ntfy topic.                                           |
+
+## Authentication
+
+hlin distinguishes anonymous viewers from logged-in editors. Reads are open
+by default (the dashboard, person pages and the schedule), but **every
+mutation requires login**, and sensitive fields (BSN, medical/admin notes,
+appointment outcomes and follow-ups, vaccination records) are redacted for
+anonymous viewers. Set `HLIN_REQUIRE_LOGIN=true` to also gate reads.
+
+Accounts are minimal: a username and a password hash, no roles, no
+self-registration. Manage them from the CLI:
+
+```sh
+uv run flask --app hlin user add linda     # prompts for a password
+uv run flask --app hlin user list
+uv run flask --app hlin user remove linda
+```
+
+Containerised, the same commands run via `docker compose exec`:
+
+```sh
+docker compose exec hlin flask --app hlin user add linda
+```
+
+Login sessions survive restarts out of the box (the signing key is persisted
+beside the database). Set `HLIN_SECRET_KEY` explicitly if you would rather
+keep the key out of the data volume, and `HLIN_SESSION_COOKIE_SECURE=true`
+behind your HTTPS reverse proxy.
 
 ## Reminders (optional)
 
@@ -94,7 +126,8 @@ so a fresh volume is initialised automatically.
 
 ```sh
 docker compose up -d --build
-docker compose exec hlin flask --app hlin seed   # once, after first start
+docker compose exec hlin flask --app hlin seed            # once, after first start
+docker compose exec hlin flask --app hlin user add linda  # create a login account
 ```
 
 TLS is assumed to terminate upstream at your reverse proxy; the container

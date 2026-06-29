@@ -201,3 +201,16 @@ class Contact(Base):
     linked_persons: Mapped[list[Person]] = relationship(
         secondary="contact_person_link", back_populates="friends"
     )
+
+
+class User(Base):
+    """A household login. Minimal multi-user auth: username + password hash,
+    no roles (every user is a full editor), no self-registration (accounts
+    are managed via the `flask user` CLI)."""
+
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(80), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
