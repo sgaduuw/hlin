@@ -39,7 +39,9 @@ def session() -> Session:
         dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
     Base.metadata.create_all(engine)
-    factory = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
+    # Match prod's SessionLocal (autoflush=False) so unit tests exercise the
+    # same flush semantics; the client fixture uses the real engine already.
+    factory = sessionmaker(bind=engine, class_=Session, autoflush=False, expire_on_commit=False)
     with factory() as session:
         yield session
 

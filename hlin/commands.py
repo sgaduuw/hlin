@@ -69,7 +69,7 @@ def log_appointment_outcome(
     outcome: str | None,
     next_action: str | None,
     done_on: date | None = None,
-) -> Appointment:
+) -> None:
     """Mark an appointment done and record its outcome, then advance any
     matching recurring obligation's ``last_done`` so the next-due date rolls
     forward. The obligation cascade is the spec's "mark done updates the
@@ -92,7 +92,6 @@ def log_appointment_outcome(
         obligation.last_done is None or obligation.last_done < completed_on
     ):
         obligation.last_done = completed_on
-    return appointment
 
 
 def add_contact(
@@ -156,7 +155,7 @@ def update_person(
     huisarts: str | None,
     tandarts: str | None,
     notes: str | None,
-) -> Person:
+) -> None:
     person.name = name
     person.role = role
     person.date_of_birth = date_of_birth
@@ -164,7 +163,6 @@ def update_person(
     person.huisarts = huisarts or None
     person.tandarts = tandarts or None
     person.notes = notes or None
-    return person
 
 
 # --- appointment / obligation edits ------------------------------------
@@ -176,11 +174,10 @@ def update_appointment(
     kind: str,
     scheduled_at: datetime | None,
     status: AppointmentStatus,
-) -> Appointment:
+) -> None:
     appointment.kind = kind
     appointment.scheduled_at = scheduled_at
     appointment.status = status
-    return appointment
 
 
 def update_obligation(
@@ -190,12 +187,11 @@ def update_obligation(
     interval_months: int,
     last_done: date | None,
     active: bool,
-) -> RecurringObligation:
+) -> None:
     obligation.kind = kind
     obligation.interval_months = interval_months
     obligation.last_done = last_done
     obligation.active = active
-    return obligation
 
 
 # --- vaccination -------------------------------------------------------
@@ -224,12 +220,11 @@ def update_vaccination(
     date: date | None,
     where: str | None,
     notes: str | None,
-) -> VaccinationRecord:
+) -> None:
     record.vaccine = vaccine
     record.date = date
     record.where = where or None
     record.notes = notes or None
-    return record
 
 
 # --- contact edit ------------------------------------------------------
@@ -246,7 +241,7 @@ def update_contact(
     email: str | None,
     birthday: date | None,
     linked_person_ids: tuple[int, ...],
-) -> Contact:
+) -> None:
     contact.name = name
     contact.kind = kind
     # A contact cannot be its own parent.
@@ -255,4 +250,3 @@ def update_contact(
     contact.email = email or None
     contact.birthday = birthday
     contact.linked_persons = _linked_persons(session, linked_person_ids)
-    return contact

@@ -15,7 +15,8 @@ names so harm does not slip through.
 > the dashboard and per-person pages, the quick-add / logging write flow
 > (add appointment, add obligation, log an outcome which advances the
 > matching obligation), full inline CRUD on persons, appointments,
-> obligations, vaccinations and contacts behind multi-user login, the
+> obligations, vaccinations and contacts behind multi-user login, an
+> append-only activity log and optional login-to-person links, the
 > contacts directory, the optional ntfy reminder, and container packaging
 > (Dockerfile + Compose).
 
@@ -79,11 +80,16 @@ appointment outcomes and follow-ups, vaccination records) are redacted for
 anonymous viewers. Set `HLIN_REQUIRE_LOGIN=true` to also gate reads.
 
 Accounts are minimal: a username and a password hash, no roles, no
-self-registration. Manage them from the CLI:
+self-registration. A login may optionally be linked to a tracked person
+("this login is me"); when linked, the nav links your name to your person
+page. Manage accounts and links from the CLI:
 
 ```sh
-uv run flask --app hlin user add linda     # prompts for a password
-uv run flask --app hlin user list
+uv run flask --app hlin user add linda            # prompts for a password
+uv run flask --app hlin user add linda --person 3 # ... and link to person id 3
+uv run flask --app hlin user link linda 3         # link an existing account
+uv run flask --app hlin user unlink linda         # remove the link
+uv run flask --app hlin user list                 # accounts and their linked person
 uv run flask --app hlin user remove linda
 ```
 
@@ -97,6 +103,14 @@ Login sessions survive restarts out of the box (the signing key is persisted
 beside the database). Set `HLIN_SECRET_KEY` explicitly if you would rather
 keep the key out of the data volume, and `HLIN_SESSION_COOKIE_SECURE=true`
 behind your HTTPS reverse proxy.
+
+### Activity log
+
+Every change (add / edit / delete of a person, appointment, obligation,
+vaccination, or contact) is recorded in an append-only audit log, written
+atomically with the change. Logged-in users can review it at `/audit`
+(newest first, filterable by action); it shows who did what and when. The
+activity log is never shown to anonymous viewers.
 
 ## Reminders (optional)
 

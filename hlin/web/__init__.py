@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from flask import Flask
 
-from . import auth, contacts, feeds, views
+from . import audit, auth, contacts, feeds, views
 
 
 def register(app: Flask) -> None:
@@ -16,3 +16,4 @@ def register(app: Flask) -> None:
     app.register_blueprint(views.bp)
     app.register_blueprint(contacts.bp)
     app.register_blueprint(feeds.bp)
+    app.register_blueprint(audit.bp)
