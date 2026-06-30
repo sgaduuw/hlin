@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Activity log - hlin{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Activity log</h1>
+  <p>Who changed what, newest first. Visible to logged-in users only.</p>
+</hgroup>
+
+<form method="get" action="{{ url_for('audit.index') }}">
+  <label>Filter by action:
+    <select name="action" onchange="this.form.submit()">
+      <option value="">(all)</option>
+      {% for a in actions %}<option value="{{ a }}" {{ 'selected' if a == action }}>{{ a }}</option>{% endfor %}
+    </select>
+  </label>
+  <noscript><button type="submit">Filter</button></noscript>
+</form>
+
+{% if entries %}
+<table>
+  <thead><tr><th>When</th><th>Who</th><th>Action</th><th>What</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr>
+      <td>{{ e.occurred_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>{{ e.actor_username or 'system' }}</td>
+      <td>{{ e.action }}</td>
+      <td>{{ e.summary or '' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if next_before %}
+<a role="button" class="secondary outline"
+   href="{{ url_for('audit.index', action=action, before=next_before) }}">Load older</a>
+{% endif %}
+{% else %}
+<p>No activity recorded yet.</p>
+{% endif %}
+{% endblock %}

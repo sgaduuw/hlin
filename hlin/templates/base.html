@@ -14,7 +14,12 @@
         <li><a href="{{ url_for('views.dashboard') }}">Dashboard</a></li>
         <li><a href="{{ url_for('contacts.index') }}">Contacts</a></li>
         {% if logged_in %}
-        <li><small>{{ current_user }}</small></li>
+        <li><a href="{{ url_for('audit.index') }}">Activity</a></li>
+        <li><small>
+          {% if current_person_id %}
+            <a href="{{ url_for('views.person', person_id=current_person_id) }}">{{ current_user }}</a>
+          {% else %}{{ current_user }}{% endif %}
+        </small></li>
         <li>
           <form method="post" action="{{ url_for('auth.logout') }}" style="margin:0">
             <button type="submit" class="secondary outline">Log out</button>
