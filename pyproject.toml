@@ -1,6 +1,6 @@
 [project]
 name = "hlin"
-version = "0.2.0"
+version = "0.3.0"
 description = "Self-hosted household care and contacts tracker with read-only CalDAV feeds."
 readme = "README.md"
 requires-python = ">=3.14"
