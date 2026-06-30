@@ -41,9 +41,7 @@ def session() -> Session:
     Base.metadata.create_all(engine)
     # Match prod's SessionLocal (autoflush=False) so unit tests exercise the
     # same flush semantics; the client fixture uses the real engine already.
-    factory = sessionmaker(
-        bind=engine, class_=Session, autoflush=False, expire_on_commit=False
-    )
+    factory = sessionmaker(bind=engine, class_=Session, autoflush=False, expire_on_commit=False)
     with factory() as session:
         yield session
 

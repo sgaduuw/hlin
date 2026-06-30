@@ -40,6 +40,4 @@ def make_engine(url: str) -> Engine:
 
 
 engine = make_engine(settings.database_url)
-SessionLocal = sessionmaker(
-    bind=engine, class_=Session, autoflush=False, expire_on_commit=False
-)
+SessionLocal = sessionmaker(bind=engine, class_=Session, autoflush=False, expire_on_commit=False)
