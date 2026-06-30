@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Audit log: an append-only record of who changed what, written atomically
+  with each change (no silent gaps). A new `/audit` activity page (logged-in
+  only), newest first, filterable by action. Anonymous viewers never see it.
+- Optional login-to-person link: a login MAY be linked to a tracked person
+  ("this login is me"), managed via `flask --app hlin user add --person`,
+  `user link`, and `user unlink` (`user list` shows the link). When linked,
+  the nav links the logged-in name to that person's page.
+
 ### Changed
 - SQLite connections now also set `PRAGMA synchronous=NORMAL` (the
   durable-and-fast pairing for WAL), and the session factory uses

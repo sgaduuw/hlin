@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from .models import (
     Appointment,
     AppointmentStatus,
+    AuditLog,
     Contact,
     ContactKind,
     Person,
@@ -67,6 +68,24 @@ def non_friend_contacts(session: Session) -> Sequence[Contact]:
     return session.scalars(
         select(Contact).where(Contact.kind != ContactKind.FRIEND).order_by(Contact.name)
     ).all()
+
+
+def list_audit(
+    session: Session,
+    *,
+    limit: int = 100,
+    action: str | None = None,
+    before_id: int | None = None,
+) -> Sequence[AuditLog]:
+    """Recent audit entries, newest first. ``action`` filters by exact action;
+    ``before_id`` pages backwards (id < before_id) for the load-more link.
+    Ordering is by id (monotonic), which also breaks occurred_at ties."""
+    stmt = select(AuditLog).order_by(AuditLog.id.desc()).limit(limit)
+    if action:
+        stmt = stmt.where(AuditLog.action == action)
+    if before_id is not None:
+        stmt = stmt.where(AuditLog.id < before_id)
+    return session.scalars(stmt).all()
 
 
 # --- per-person derivations (operate on a loaded Person) -----------------

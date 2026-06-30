@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from flask import Blueprint, abort, render_template, request
 
-from .. import auth, commands, store
+from .. import audit, auth, commands, store
+from ..audit import AuditAction
 from ..db import SessionLocal
 from ..models import Contact, ContactKind
 from ._forms import parse_date
@@ -57,7 +58,7 @@ def add():
         name = request.form.get("name", "").strip()
         if not name:
             abort(400)
-        commands.add_contact(
+        contact = commands.add_contact(
             session,
             name=name,
             kind=ContactKind(request.form.get("kind", "friend")),
@@ -67,6 +68,8 @@ def add():
             birthday=parse_date(request.form.get("birthday")),
             linked_person_ids=_form_linked_person_ids(),
         )
+        session.flush()  # assign the id before auditing the create
+        audit.record(session, AuditAction.CONTACT_CREATE, contact)
         session.commit()
         return render_template("_contacts_main.html", **_context(session))
 
@@ -90,6 +93,7 @@ def edit(contact_id: int):
             birthday=parse_date(request.form.get("birthday")),
             linked_person_ids=_form_linked_person_ids(),
         )
+        audit.record(session, AuditAction.CONTACT_UPDATE, contact)
         session.commit()
         return render_template("_contacts_main.html", **_context(session))
 
@@ -99,6 +103,7 @@ def edit(contact_id: int):
 def delete(contact_id: int):
     with SessionLocal() as session:
         contact = _require_contact(session, contact_id)
+        audit.record(session, AuditAction.CONTACT_DELETE, contact)
         session.delete(contact)
         session.commit()
         return render_template("_contacts_main.html", **_context(session))

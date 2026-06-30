@@ -14,7 +14,8 @@ from datetime import date
 
 from flask import Blueprint, Response, abort, redirect, render_template, request, url_for
 
-from .. import auth, commands, store
+from .. import audit, auth, commands, store
+from ..audit import AuditAction
 from ..db import SessionLocal
 from ..models import (
     APPOINTMENT_KINDS,
@@ -103,13 +104,15 @@ def add_appointment(person_id: int):
         kind = request.form.get("kind", "").strip()
         if not kind:
             abort(400)
-        commands.add_appointment(
+        appointment = commands.add_appointment(
             session,
             person_id,
             kind=kind,
             scheduled_at=parse_datetime(request.form.get("scheduled_at")),
             status=AppointmentStatus(request.form.get("status", "due")),
         )
+        session.flush()  # assign the id before auditing the create
+        audit.record(session, AuditAction.APPOINTMENT_CREATE, appointment)
         session.commit()
         session.expire(target)
         return render_template("_person_main.html", **_person_context(target))
@@ -124,13 +127,15 @@ def add_obligation(person_id: int):
         interval = request.form.get("interval_months", "").strip()
         if not kind or not interval.isdigit():
             abort(400)
-        commands.add_obligation(
+        obligation = commands.add_obligation(
             session,
             person_id,
             kind=kind,
             interval_months=int(interval),
             last_done=parse_date(request.form.get("last_done")),
         )
+        session.flush()  # assign the id before auditing the create
+        audit.record(session, AuditAction.OBLIGATION_CREATE, obligation)
         session.commit()
         session.expire(target)
         return render_template("_person_main.html", **_person_context(target))
@@ -148,6 +153,7 @@ def log_outcome(person_id: int, appointment_id: int):
             outcome=request.form.get("outcome", "").strip() or None,
             next_action=request.form.get("next_action", "").strip() or None,
         )
+        audit.record(session, AuditAction.APPOINTMENT_LOG_OUTCOME, appointment)
         session.commit()
         session.expire(target)
         return render_template("_person_main.html", **_person_context(target))
@@ -205,6 +211,8 @@ def add_person():
             role=_form_role(),
             date_of_birth=parse_date(request.form.get("date_of_birth")),
         )
+        session.flush()  # assign the id before auditing the create
+        audit.record(session, AuditAction.PERSON_CREATE, person)
         session.commit()
         person_id = person.id
     return _redirect("views.person", person_id=person_id)
@@ -228,6 +236,7 @@ def edit_person(person_id: int):
             tandarts=request.form.get("tandarts", "").strip(),
             notes=request.form.get("notes", "").strip(),
         )
+        audit.record(session, AuditAction.PERSON_UPDATE, target)
         session.commit()
         return _person_main(session, target)
 
@@ -237,6 +246,7 @@ def edit_person(person_id: int):
 def delete_person(person_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
+        audit.record(session, AuditAction.PERSON_DELETE, target)  # before delete: id still alive
         session.delete(target)
         session.commit()
     return _redirect("views.dashboard")
@@ -257,6 +267,7 @@ def edit_appointment(person_id: int, appointment_id: int):
             scheduled_at=parse_datetime(request.form.get("scheduled_at")),
             status=AppointmentStatus(request.form.get("status", "due")),
         )
+        audit.record(session, AuditAction.APPOINTMENT_UPDATE, appointment)
         session.commit()
         return _person_main(session, target)
 
@@ -267,6 +278,7 @@ def delete_appointment(person_id: int, appointment_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
         appointment = _require_child(session, Appointment, person_id, appointment_id)
+        audit.record(session, AuditAction.APPOINTMENT_DELETE, appointment)
         session.delete(appointment)
         session.commit()
         return _person_main(session, target)
@@ -289,6 +301,7 @@ def edit_obligation(person_id: int, obligation_id: int):
             last_done=parse_date(request.form.get("last_done")),
             active="active" in request.form,
         )
+        audit.record(session, AuditAction.OBLIGATION_UPDATE, obligation)
         session.commit()
         return _person_main(session, target)
 
@@ -299,6 +312,7 @@ def delete_obligation(person_id: int, obligation_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
         obligation = _require_child(session, RecurringObligation, person_id, obligation_id)
+        audit.record(session, AuditAction.OBLIGATION_DELETE, obligation)
         session.delete(obligation)
         session.commit()
         return _person_main(session, target)
@@ -312,7 +326,7 @@ def add_vaccination(person_id: int):
         abort(400)
     with SessionLocal() as session:
         target = _require_person(session, person_id)
-        commands.add_vaccination(
+        record = commands.add_vaccination(
             session,
             person_id,
             vaccine=vaccine,
@@ -320,6 +334,8 @@ def add_vaccination(person_id: int):
             where=request.form.get("where", "").strip() or None,
             notes=request.form.get("notes", "").strip() or None,
         )
+        session.flush()  # assign the id before auditing the create
+        audit.record(session, AuditAction.VACCINATION_CREATE, record)
         session.commit()
         return _person_main(session, target)
 
@@ -340,6 +356,7 @@ def edit_vaccination(person_id: int, vaccination_id: int):
             where=request.form.get("where", "").strip() or None,
             notes=request.form.get("notes", "").strip() or None,
         )
+        audit.record(session, AuditAction.VACCINATION_UPDATE, record)
         session.commit()
         return _person_main(session, target)
 
@@ -350,6 +367,7 @@ def delete_vaccination(person_id: int, vaccination_id: int):
     with SessionLocal() as session:
         target = _require_person(session, person_id)
         record = _require_child(session, VaccinationRecord, person_id, vaccination_id)
+        audit.record(session, AuditAction.VACCINATION_DELETE, record)
         session.delete(record)
         session.commit()
         return _person_main(session, target)

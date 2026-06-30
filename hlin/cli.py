@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from . import auth, notify, store
 from .db import SessionLocal
-from .models import User
+from .models import Person, User
 from .recall import obligations_needing_attention
 from .seed_data import seed_household
 from .settings import settings
@@ -71,6 +71,28 @@ def user_group() -> None:
     """Manage household login accounts."""
 
 
+def _require_user(session, username: str) -> User:
+    user = session.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise click.ClickException(f"No such user {username!r}.")
+    return user
+
+
+def _link_person(session, user: User, person_id: int) -> None:
+    """Point a login at a tracked person, validating it exists and is not
+    already claimed by another login (the unique constraint enforces the same,
+    this just gives a friendly message)."""
+    person = session.get(Person, person_id)
+    if person is None:
+        raise click.ClickException(f"No person with id {person_id}.")
+    claimer = session.scalar(select(User).where(User.person_id == person_id))
+    if claimer is not None and claimer is not user:
+        raise click.ClickException(
+            f"Person {person_id} is already linked to user {claimer.username!r}."
+        )
+    user.person_id = person_id
+
+
 @user_group.command("add")
 @click.argument("username")
 @click.option(
@@ -80,28 +102,58 @@ def user_group() -> None:
     confirmation_prompt=True,
     help="Prompted (hidden) if omitted.",
 )
+@click.option("--person", "person_id", type=int, default=None, help="Link to a tracked person id.")
 @with_appcontext
-def user_add(username: str, password: str) -> None:
-    """Create a login account."""
+def user_add(username: str, password: str, person_id: int | None) -> None:
+    """Create a login account, optionally linked to a person."""
     with SessionLocal() as session:
         if session.scalar(select(User).where(User.username == username)) is not None:
             raise click.ClickException(f"User {username!r} already exists.")
-        session.add(User(username=username, password_hash=auth.hash_password(password)))
+        user = User(username=username, password_hash=auth.hash_password(password))
+        if person_id is not None:
+            _link_person(session, user, person_id)
+        session.add(user)
         session.commit()
     click.echo(f"Added user {username!r}.")
+
+
+@user_group.command("link")
+@click.argument("username")
+@click.argument("person_id", type=int)
+@with_appcontext
+def user_link(username: str, person_id: int) -> None:
+    """Link a login to a tracked person ("this login is me")."""
+    with SessionLocal() as session:
+        _link_person(session, _require_user(session, username), person_id)
+        session.commit()
+    click.echo(f"Linked {username!r} to person {person_id}.")
+
+
+@user_group.command("unlink")
+@click.argument("username")
+@with_appcontext
+def user_unlink(username: str) -> None:
+    """Remove a login's person link."""
+    with SessionLocal() as session:
+        _require_user(session, username).person_id = None
+        session.commit()
+    click.echo(f"Unlinked {username!r}.")
 
 
 @user_group.command("list")
 @with_appcontext
 def user_list() -> None:
-    """List login accounts."""
+    """List login accounts and any linked person."""
     with SessionLocal() as session:
         users = session.scalars(select(User).order_by(User.username)).all()
-    if not users:
-        click.echo("No users yet. Add one with `flask --app hlin user add <name>`.")
-        return
-    for user in users:
-        click.echo(user.username)
+        if not users:
+            click.echo("No users yet. Add one with `flask --app hlin user add <name>`.")
+            return
+        for user in users:
+            if user.person is not None:
+                click.echo(f"{user.username} -> {user.person.name} ({user.person.role.value})")
+            else:
+                click.echo(user.username)
 
 
 @user_group.command("remove")
@@ -110,9 +162,6 @@ def user_list() -> None:
 def user_remove(username: str) -> None:
     """Delete a login account."""
     with SessionLocal() as session:
-        user = session.scalar(select(User).where(User.username == username))
-        if user is None:
-            raise click.ClickException(f"No such user {username!r}.")
-        session.delete(user)
+        session.delete(_require_user(session, username))
         session.commit()
     click.echo(f"Removed user {username!r}.")

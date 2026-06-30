@@ -112,6 +112,11 @@ class Person(Base):
     friends: Mapped[list[Contact]] = relationship(
         secondary="contact_person_link", back_populates="linked_persons"
     )
+    login: Mapped[User | None] = relationship(back_populates="person", uselist=False)
+
+    @property
+    def audit_label(self) -> str:
+        return self.name
 
 
 class Appointment(Base):
@@ -133,6 +138,10 @@ class Appointment(Base):
 
     person: Mapped[Person] = relationship(back_populates="appointments")
 
+    @property
+    def audit_label(self) -> str:
+        return f"{self.kind} for {self.person.name}"
+
 
 class RecurringObligation(Base):
     __tablename__ = "recurring_obligation"
@@ -147,6 +156,10 @@ class RecurringObligation(Base):
 
     person: Mapped[Person] = relationship(back_populates="obligations")
 
+    @property
+    def audit_label(self) -> str:
+        return f"{self.kind} for {self.person.name}"
+
 
 class VaccinationRecord(Base):
     __tablename__ = "vaccination_record"
@@ -159,6 +172,10 @@ class VaccinationRecord(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     person: Mapped[Person] = relationship(back_populates="vaccinations")
+
+    @property
+    def audit_label(self) -> str:
+        return f"{self.vaccine} for {self.person.name}"
 
 
 class ContactPersonLink(Base):
@@ -202,11 +219,20 @@ class Contact(Base):
         secondary="contact_person_link", back_populates="friends"
     )
 
+    @property
+    def audit_label(self) -> str:
+        return self.name
+
 
 class User(Base):
     """A household login. Minimal multi-user auth: username + password hash,
     no roles (every user is a full editor), no self-registration (accounts
-    are managed via the `flask user` CLI)."""
+    are managed via the `flask user` CLI).
+
+    A login MAY be linked to a tracked ``Person`` (``person_id``, optional
+    1:1): "this login is me". Unique so two logins cannot claim the same
+    person; ``SET NULL`` so deleting the person just unlinks the login
+    (deleting people and revoking logins stay separate concerns)."""
 
     __tablename__ = "user"
 
@@ -214,3 +240,34 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(80), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    person_id: Mapped[int | None] = mapped_column(
+        ForeignKey("person.id", ondelete="SET NULL"), unique=True, nullable=True
+    )
+
+    person: Mapped[Person | None] = relationship(back_populates="login")
+
+
+class AuditLog(Base):
+    """Append-only record of who changed what, when. Written atomically with
+    the change it describes (the same request session commits both), so the
+    trail has no silent gaps.
+
+    ``actor_*`` and ``target_*`` are weakly referenced (no foreign key): the
+    actor username is snapshotted so a row stays readable after the login is
+    deleted, and ``target_id`` outlives the row it documents (notably a
+    deletion). A weak ``actor_user_id`` also means a stale session user id
+    can never FK-violate the atomic write. See hlin/audit.py for the recorder
+    and the ``AuditAction`` vocabulary."""
+
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, index=True
+    )
+    actor_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    actor_username: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    action: Mapped[str] = mapped_column(String(64), index=True)
+    target_type: Mapped[str] = mapped_column(String(32))
+    target_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)

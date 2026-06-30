@@ -67,6 +67,7 @@ def create_app() -> Flask:
             "horizon_days": settings.horizon_days,
             "logged_in": auth.is_authenticated(),
             "current_user": auth.current_username(),
+            "current_person_id": auth.current_person_id(),
         }
 
     @app.before_request

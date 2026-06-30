@@ -18,6 +18,7 @@ from .models import User
 
 _USER_ID = "user_id"
 _USERNAME = "username"
+_PERSON_ID = "person_id"  # the tracked Person this login is linked to, if any
 
 # Compared against when the username is unknown, so an absent user costs the
 # same pbkdf2 work as a wrong password and the two are not distinguishable by
@@ -39,15 +40,23 @@ def verify_password(user: User | None, password: str) -> bool:
 def log_in(user: User) -> None:
     session[_USER_ID] = user.id
     session[_USERNAME] = user.username
+    session[_PERSON_ID] = user.person_id
 
 
 def log_out() -> None:
     session.pop(_USER_ID, None)
     session.pop(_USERNAME, None)
+    session.pop(_PERSON_ID, None)
 
 
 def current_username() -> str | None:
     return session.get(_USERNAME)
+
+
+def current_person_id() -> int | None:
+    """The tracked Person this login is linked to, or None. Captured at login;
+    a link change takes effect on the next login (no per-request DB lookup)."""
+    return session.get(_PERSON_ID)
 
 
 def is_authenticated() -> bool:
