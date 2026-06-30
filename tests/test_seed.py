@@ -41,8 +41,6 @@ def test_seed_reuses_existing_person_by_name(session):
     session.commit()
     seed_household(session)
     session.commit()
-    same_name = session.scalar(
-        select(func.count()).select_from(Person).where(Person.name == name)
-    )
+    same_name = session.scalar(select(func.count()).select_from(Person).where(Person.name == name))
     assert same_name == 1
     assert _count(session, Person) == len(SEED_PERSONS)
