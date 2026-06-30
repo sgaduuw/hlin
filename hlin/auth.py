@@ -53,6 +53,10 @@ def current_username() -> str | None:
     return session.get(_USERNAME)
 
 
+def current_user_id() -> int | None:
+    return session.get(_USER_ID)
+
+
 def current_person_id() -> int | None:
     """The tracked Person this login is linked to, or None. Captured at login;
     a link change takes effect on the next login (no per-request DB lookup)."""

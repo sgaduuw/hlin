@@ -8,23 +8,28 @@ from the view layer (routes / CLI), never from a model event or a lifecycle
 hook, matching the sibling apps (mimir and bragi both capture audit with an
 explicit call at the write site, not via ORM events).
 
-The actor is read from the Flask session (set at login), guarded by
+The actor is read from the Flask session (via ``auth``), guarded by
 ``has_request_context()`` so a CLI / system mutation records actor ``None``.
 """
 
 from __future__ import annotations
 
+import enum
+
 from flask import has_request_context
-from flask import session as flask_session
 from sqlalchemy.orm import Session
 
+from . import auth
 from .models import AuditLog
 
 
-class AuditAction:
-    """Audit action vocabulary: ``domain.verb`` string constants. An open set
-    (a new action needs no migration); naming a missing constant fails at
-    import, which a bare string literal at the call site would not."""
+class AuditAction(enum.StrEnum):
+    """Audit action vocabulary: ``domain.verb`` values. A ``StrEnum`` (the
+    house idiom, like ``Role``) so members are usable as plain strings and the
+    set iterates for the filter dropdown; naming a missing constant fails at
+    import, which a bare string literal at the call site would not. The
+    ``audit_log.action`` column stays a free ``String`` (open vocabulary: a new
+    action needs no migration), this only supplies the typed constants."""
 
     PERSON_CREATE = "person.create"
     PERSON_UPDATE = "person.update"
@@ -45,19 +50,7 @@ class AuditAction:
 
 
 # Every action value, for the audit page's filter dropdown.
-ALL_ACTIONS: tuple[str, ...] = tuple(
-    value
-    for key, value in vars(AuditAction).items()
-    if isinstance(value, str) and not key.startswith("_")
-)
-
-
-def _current_actor() -> tuple[int | None, str | None]:
-    """``(user_id, username)`` of the logged-in actor, or ``(None, None)`` for
-    an anonymous request or a CLI / system mutation (no request context)."""
-    if not has_request_context():
-        return None, None
-    return flask_session.get("user_id"), flask_session.get("username")
+ALL_ACTIONS: tuple[AuditAction, ...] = tuple(AuditAction)
 
 
 def record(session: Session, action: str, target) -> None:
@@ -68,14 +61,15 @@ def record(session: Session, action: str, target) -> None:
     human ``summary`` are read off ``target``, so it must be alive and have a
     persistent id, call this BEFORE deleting it, and ``flush()`` a freshly
     created object first so its id is assigned. The actor is snapshotted from
-    the session (username kept verbatim so the row survives login deletion).
+    the session (username kept verbatim so the row survives login deletion);
+    a CLI / system mutation has no request context and records actor ``None``.
     """
-    actor_id, actor_username = _current_actor()
+    in_request = has_request_context()
     session.add(
         AuditLog(
             action=action,
-            actor_user_id=actor_id,
-            actor_username=actor_username,
+            actor_user_id=auth.current_user_id() if in_request else None,
+            actor_username=auth.current_username() if in_request else None,
             target_type=target.__tablename__,
             target_id=target.id,
             summary=getattr(target, "audit_label", None),

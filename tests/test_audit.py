@@ -36,9 +36,7 @@ def _rows(action=None):
 
 
 def _add_appointment(client, pid, kind="huisarts"):
-    client.post(
-        f"/person/{pid}/appointment", data={"kind": kind}, headers={"HX-Request": "true"}
-    )
+    client.post(f"/person/{pid}/appointment", data={"kind": kind}, headers={"HX-Request": "true"})
     return _rows(AuditAction.APPOINTMENT_CREATE)[-1].target_id
 
 
