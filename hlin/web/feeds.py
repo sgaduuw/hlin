@@ -2,9 +2,9 @@
 
 Stable URLs for the household's CalDAV clients:
 
-* ``/feeds/all.ics``            -- every person's appointments + due-dates
-* ``/feeds/social.ics``        -- contact birthdays
-* ``/feeds/person/<id>.ics``   -- one person's appointments + due-dates
+* ``/feeds/all.ics``           : every person's appointments + due-dates
+* ``/feeds/social.ics``        : contact birthdays
+* ``/feeds/person/<id>.ics``   : one person's appointments + due-dates
 
 Person feeds are keyed on the numeric id (stable across renames) rather
 than a name slug. The calendar is built and serialised inside the session

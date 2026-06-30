@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from .models import Person, RecurringObligation, Role
 
-# (name, role, date_of_birth) -- anonymous placeholders for the dev env.
+# (name, role, date_of_birth): anonymous placeholders for the dev env.
 # Replace with your real household before relying on the seed.
 SEED_PERSONS: list[tuple[str, Role, date | None]] = [
     ("Alice", Role.CHILD, date(2016, 5, 1)),
@@ -26,7 +26,7 @@ SEED_PERSONS: list[tuple[str, Role, date | None]] = [
     ("Erin", Role.ELDER, None),
 ]
 
-# (person_name, kind, interval_months) -- initial recurring obligations.
+# (person_name, kind, interval_months): initial recurring obligations.
 # Mixed cadences/roles so the dev env exercises the recall logic broadly.
 SEED_OBLIGATIONS: list[tuple[str, str, int]] = [
     ("Alice", "tandarts", 6),
