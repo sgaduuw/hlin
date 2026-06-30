@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- SQLite connections now also set `PRAGMA synchronous=NORMAL` (the
+  durable-and-fast pairing for WAL), and the session factory uses
+  `autoflush=False`, aligning hlin's DB layer with the sibling apps
+  (mimir / bragi). No behaviour change for users.
+
 ## [0.2.0] - 2026-06-29
 
 Adds web-based administration so the household can manage everything from the
