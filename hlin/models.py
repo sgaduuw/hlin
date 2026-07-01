@@ -129,6 +129,10 @@ class Appointment(Base):
     status: Mapped[AppointmentStatus] = mapped_column(
         _str_enum(AppointmentStatus), default=AppointmentStatus.DUE
     )
+    # Pre-appointment details (location, description); populated from an .ics
+    # invite's LOCATION + DESCRIPTION, or entered by hand. Sensitive: redacted
+    # for anonymous viewers like outcome, and never emitted in the .ics feeds.
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     outcome: Mapped[str | None] = mapped_column(Text, nullable=True)
     next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
