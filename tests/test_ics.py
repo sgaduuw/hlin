@@ -152,6 +152,16 @@ def test_upload_requires_login(client):
     assert resp.status_code == 401  # htmx -> 401 + HX-Redirect
 
 
+def test_upload_form_is_a_dropzone(client):
+    _login(client)
+    pid = _make_person()
+    body = client.get(f"/person/{pid}").get_data(as_text=True)
+    assert "data-dropzone" in body
+    assert 'class="dropzone"' in body
+    assert "drop.js" in body  # the progressive-enhancement script is wired
+    assert client.get("/static/drop.js").status_code == 200  # and served
+
+
 def test_upload_over_size_cap_rejected(client):
     _login(client)
     pid = _make_person()
