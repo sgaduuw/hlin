@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-01
+
+### Fixed
+- The container image gives the `hlin` user a writable home directory (and
+  sets `HOME`), so gunicorn's control server no longer fails with a permission
+  denial on `/home/hlin` at startup. Cosmetic (the workers were unaffected),
+  but it clears the recurring error from the container logs.
+
 ## [0.3.0] - 2026-07-01
 
 Adds an audit trail and lets a login identify as a tracked person.
@@ -87,7 +95,8 @@ an existing CalDAV setup rather than replacing it.
 - Tier-C CI: PR-gated lint / format / tests / hadolint / image build, and a
   tag-triggered image publish to GHCR.
 
-[Unreleased]: https://github.com/sgaduuw/hlin/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/sgaduuw/hlin/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/sgaduuw/hlin/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/sgaduuw/hlin/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sgaduuw/hlin/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sgaduuw/hlin/releases/tag/v0.1.0

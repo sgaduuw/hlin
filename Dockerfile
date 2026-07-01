@@ -31,14 +31,17 @@ FROM python:3.14-slim AS runtime
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
+    HOME=/home/hlin \
     HLIN_DB_PATH=/data/hlin.db
 
 WORKDIR /app
 
-# Run as a non-root user; the SQLite file lives on the /data volume.
-RUN useradd --system --uid 10001 hlin \
-    && mkdir -p /data \
-    && chown hlin:hlin /data
+# Run as a non-root user; the SQLite file lives on the /data volume. Give the
+# user a real, writable home: gunicorn's control server writes under $HOME, and
+# a system account with an uncreated home makes it fail with EACCES on /home/hlin.
+RUN useradd --system --uid 10001 --home-dir /home/hlin hlin \
+    && mkdir -p /data /home/hlin \
+    && chown hlin:hlin /data /home/hlin
 
 COPY --from=builder --chown=hlin:hlin /app /app
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
