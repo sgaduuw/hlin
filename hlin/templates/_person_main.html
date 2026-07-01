@@ -108,9 +108,10 @@
 {% if ics_error %}<p><small>⚠️ {{ ics_error }}</small></p>{% endif %}
 <details>
   <summary role="button" class="secondary outline">Upload invite (.ics)</summary>
-  <p><small>Upload a calendar invite; the fields below are pre-filled for you to review before saving.</small></p>
   <form hx-post="{{ url_for('views.appointment_from_ics', person_id=person.id) }}"
-        hx-target="#person-main" hx-swap="outerHTML" hx-encoding="multipart/form-data">
+        hx-target="#person-main" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+        data-dropzone class="dropzone">
+    <p><small>Drag a calendar invite here, or click to choose. The fields below are then pre-filled for you to review before saving.</small></p>
     <input type="file" name="ics" accept=".ics,text/calendar" required>
     <button type="submit">Parse invite</button>
   </form>
