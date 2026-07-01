@@ -14,13 +14,9 @@ from datetime import date, datetime
 
 from icalendar import Calendar
 
-# Cap the kind suggestion: SUMMARY is free text and can be long, while `kind` is
-# a short vocabulary the user refines in the review form.
-_KIND_SUGGESTION_MAX = 40
-
 
 class InvalidICS(ValueError):
-    """The upload is not a calendar with at least one event."""
+    """The upload could not be read as a calendar with at least one usable event."""
 
 
 @dataclass(frozen=True)
@@ -37,31 +33,33 @@ def parse_invite(data: bytes) -> tuple[ParsedEvent, int]:
 
     Returns ``(event, total_event_count)`` so the caller can note when a file
     holds more than one (invites are single-event in practice). Raises
-    ``InvalidICS`` when the bytes are not a calendar with at least one event.
+    ``InvalidICS`` on anything that is not a readable calendar event, malformed
+    bytes, no VEVENT, or a VEVENT we cannot turn into fields (e.g. a duplicate
+    property, which icalendar surfaces as a list), so the route returns a
+    friendly 400 rather than a 500. The whole parse is guarded for that reason.
     """
     try:
-        cal = Calendar.from_ical(data)
-    except Exception as exc:  # icalendar raises assorted errors on malformed input
-        raise InvalidICS("This does not look like a valid iCalendar (.ics) file.") from exc
-    events = list(cal.walk("VEVENT"))
-    if not events:
-        raise InvalidICS("No event (VEVENT) was found in the file.")
-    return _to_parsed(events[0]), len(events)
-
-
-def _to_parsed(vevent) -> ParsedEvent:
-    return ParsedEvent(
-        kind_suggestion=_kind(vevent.get("summary")),
-        scheduled_at=_start(vevent.get("dtstart")),
-        notes=_notes(vevent.get("location"), vevent.get("description")),
-    )
+        events = list(Calendar.from_ical(data).walk("VEVENT"))
+        if not events:
+            raise InvalidICS("No event (VEVENT) was found in the file.")
+        vevent = events[0]
+        event = ParsedEvent(
+            kind_suggestion=_kind(vevent.get("summary")),
+            scheduled_at=_start(vevent.get("dtstart")),
+            notes=_notes(vevent.get("location"), vevent.get("description")),
+        )
+    except InvalidICS:
+        raise  # keep the specific "no event" message
+    except Exception as exc:  # malformed bytes, duplicate props, odd value types
+        raise InvalidICS("Could not read a calendar event from this file.") from exc
+    return event, len(events)
 
 
 def _kind(summary) -> str | None:
+    # SUMMARY is free text and can be long; cap it, the user refines the kind.
     if summary is None:
         return None
-    text = str(summary).strip()
-    return text[:_KIND_SUGGESTION_MAX] or None
+    return str(summary).strip()[:40] or None
 
 
 def _start(dtstart) -> datetime | None:

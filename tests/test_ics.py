@@ -64,6 +64,20 @@ def test_parse_no_vevent_raises():
         ics.parse_invite(b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nEND:VCALENDAR\r\n")
 
 
+_DUPLICATE_DTSTART = (
+    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
+    "BEGIN:VEVENT\r\nUID:1\r\nDTSTART:20260710T090000\r\nDTSTART:20260711T090000\r\n"
+    "SUMMARY:Dup\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+).encode()
+
+
+def test_parse_duplicate_property_raises_not_crashes():
+    # icalendar surfaces a repeated property as a list; the parser must turn the
+    # resulting error into InvalidICS, not let it escape (real invites do this).
+    with pytest.raises(ics.InvalidICS):
+        ics.parse_invite(_DUPLICATE_DTSTART)
+
+
 def test_parse_multiple_events_takes_first_reports_count():
     two = (
         "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
@@ -122,7 +136,14 @@ def test_upload_bad_file_shows_error_not_500(client):
     pid = _make_person()
     resp = _upload(client, pid, b"garbage")
     assert resp.status_code == 200
-    assert "iCalendar" in resp.get_data(as_text=True)
+    assert "⚠️" in resp.get_data(as_text=True)  # the error banner, not a 500
+
+
+def test_upload_duplicate_property_shows_error_not_500(client):
+    _login(client)
+    pid = _make_person()
+    resp = _upload(client, pid, _DUPLICATE_DTSTART)
+    assert resp.status_code == 200  # friendly re-render, never a 500
 
 
 def test_upload_requires_login(client):
