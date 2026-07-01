@@ -65,10 +65,10 @@ def test_parse_no_vevent_raises():
 
 
 _DUPLICATE_DTSTART = (
-    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
-    "BEGIN:VEVENT\r\nUID:1\r\nDTSTART:20260710T090000\r\nDTSTART:20260711T090000\r\n"
-    "SUMMARY:Dup\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
-).encode()
+    b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
+    b"BEGIN:VEVENT\r\nUID:1\r\nDTSTART:20260710T090000\r\nDTSTART:20260711T090000\r\n"
+    b"SUMMARY:Dup\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+)
 
 
 def test_parse_duplicate_property_raises_not_crashes():
@@ -80,11 +80,11 @@ def test_parse_duplicate_property_raises_not_crashes():
 
 def test_parse_multiple_events_takes_first_reports_count():
     two = (
-        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
-        "BEGIN:VEVENT\r\nUID:1\r\nDTSTART:20260710T090000\r\nSUMMARY:First\r\nEND:VEVENT\r\n"
-        "BEGIN:VEVENT\r\nUID:2\r\nDTSTART:20260711T090000\r\nSUMMARY:Second\r\nEND:VEVENT\r\n"
-        "END:VCALENDAR\r\n"
-    ).encode()
+        b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\n"
+        b"BEGIN:VEVENT\r\nUID:1\r\nDTSTART:20260710T090000\r\nSUMMARY:First\r\nEND:VEVENT\r\n"
+        b"BEGIN:VEVENT\r\nUID:2\r\nDTSTART:20260711T090000\r\nSUMMARY:Second\r\nEND:VEVENT\r\n"
+        b"END:VCALENDAR\r\n"
+    )
     event, count = ics.parse_invite(two)
     assert count == 2
     assert event.kind_suggestion == "First"
