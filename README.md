@@ -14,11 +14,11 @@ names so harm does not slip through.
 > model, migrations, household seed, recall logic, read-only `.ics` feeds,
 > the dashboard and per-person pages, the quick-add / logging write flow
 > (add appointment, add obligation, log an outcome which advances the
-> matching obligation), full inline CRUD on persons, appointments,
-> obligations, vaccinations and contacts behind multi-user login, an
-> append-only activity log and optional login-to-person links, the
-> contacts directory, the optional ntfy reminder, and container packaging
-> (Dockerfile + Compose).
+> matching obligation), creating an appointment by uploading a calendar
+> invite (`.ics`), full inline CRUD on persons, appointments, obligations,
+> vaccinations and contacts behind multi-user login, an append-only activity
+> log and optional login-to-person links, the contacts directory, the
+> optional ntfy reminder, and container packaging (Dockerfile + Compose).
 
 ## Stack
 

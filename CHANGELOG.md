@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Upload a calendar invite (`.ics`) on a person page to create an
+  appointment: the event's date/time, summary, location, and description are
+  parsed and pre-filled into the Add-appointment form for review before
+  saving. Login-gated; the raw file is parsed and discarded, not stored.
+- Appointments gained a free-text `notes` field (location / details), shown
+  in the manual Add/Edit forms and populated from an invite's location and
+  description. Redacted for anonymous viewers like the other sensitive fields.
+
 ## [0.3.1] - 2026-07-01
 
 ### Fixed
