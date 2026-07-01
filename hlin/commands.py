@@ -39,9 +39,14 @@ def add_appointment(
     kind: str,
     scheduled_at: datetime | None = None,
     status: AppointmentStatus = AppointmentStatus.DUE,
+    notes: str | None = None,
 ) -> Appointment:
     appointment = Appointment(
-        person_id=person_id, kind=kind, scheduled_at=scheduled_at, status=status
+        person_id=person_id,
+        kind=kind,
+        scheduled_at=scheduled_at,
+        status=status,
+        notes=notes or None,
     )
     session.add(appointment)
     return appointment
@@ -174,10 +179,12 @@ def update_appointment(
     kind: str,
     scheduled_at: datetime | None,
     status: AppointmentStatus,
+    notes: str | None,
 ) -> None:
     appointment.kind = kind
     appointment.scheduled_at = scheduled_at
     appointment.status = status
+    appointment.notes = notes or None
 
 
 def update_obligation(

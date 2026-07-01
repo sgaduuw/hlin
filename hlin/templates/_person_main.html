@@ -105,17 +105,30 @@
 
 <h2>Appointments</h2>
 {% if logged_in %}
+{% if ics_error %}<p><small>⚠️ {{ ics_error }}</small></p>{% endif %}
 <details>
-  <summary role="button" class="secondary outline">Add appointment</summary>
+  <summary role="button" class="secondary outline">Upload invite (.ics)</summary>
+  <form hx-post="{{ url_for('views.appointment_from_ics', person_id=person.id) }}"
+        hx-target="#person-main" hx-swap="outerHTML" hx-encoding="multipart/form-data"
+        data-dropzone class="dropzone">
+    <p><small>Drag a calendar invite here, or click to choose. The fields below are then pre-filled for you to review before saving.</small></p>
+    <input type="file" name="ics" accept=".ics,text/calendar" required>
+    <button type="submit">Parse invite</button>
+  </form>
+</details>
+<details {{ 'open' if prefill }}>
+  <summary role="button" class="secondary outline">Add appointment{% if prefill %} (review invite){% endif %}</summary>
+  {% if prefill and extra_events %}<p><small>{{ extra_events }} further event(s) in the file were ignored; showing the first.</small></p>{% endif %}
   <form hx-post="{{ url_for('views.add_appointment', person_id=person.id) }}" hx-target="#person-main" hx-swap="outerHTML">
-    <input name="kind" list="kinds" placeholder="kind (e.g. huisarts)" required>
+    <input name="kind" list="kinds" value="{{ prefill.kind if prefill else '' }}" placeholder="kind (e.g. huisarts)" required>
     <div class="grid">
-      <input name="scheduled_at" type="datetime-local" aria-label="when (optional)">
+      <input name="scheduled_at" type="datetime-local" value="{{ prefill.scheduled_at if prefill else '' }}" aria-label="when (optional)">
       <select name="status" aria-label="status">
-        <option value="due">due</option>
-        <option value="booked">booked</option>
+        <option value="due" {{ 'selected' if not prefill }}>due</option>
+        <option value="booked" {{ 'selected' if prefill }}>booked</option>
       </select>
     </div>
+    <textarea name="notes" placeholder="notes / location (optional)" rows="2">{{ prefill.notes if prefill else '' }}</textarea>
     <button type="submit">Add appointment</button>
   </form>
 </details>
@@ -126,7 +139,7 @@
   <tbody>
   {% for a in appointments %}
     <tr>
-      <td>{{ a.kind }}</td>
+      <td>{{ a.kind }}{% if logged_in and a.notes %}<br><small style="white-space: pre-line">{{ a.notes }}</small>{% endif %}</td>
       <td>{{ a.scheduled_at.strftime('%Y-%m-%d %H:%M') if a.scheduled_at else 'unscheduled' }}</td>
       <td>{{ a.status.value }}</td>
       <td>
@@ -157,6 +170,7 @@
                 {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == a.status.value }}>{{ s }}</option>{% endfor %}
               </select>
             </div>
+            <textarea name="notes" placeholder="notes / location (optional)" rows="2">{{ a.notes or '' }}</textarea>
             <button type="submit">Save</button>
           </form>
         </details>

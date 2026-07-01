@@ -6,6 +6,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-01
+
+Create appointments from calendar invites.
+
+### Added
+- Upload a calendar invite (`.ics`) on a person page to create an
+  appointment: the event's date/time, summary, location, and description are
+  parsed and pre-filled into the Add-appointment form for review before
+  saving. Login-gated; the raw file is parsed and discarded, not stored.
+- Drag-and-drop for the invite upload: drag an `.ics` from your mail app onto
+  the drop zone (or click to choose); the plain file input remains as a
+  no-JavaScript fallback.
+- Appointments gained a free-text `notes` field (location / details), shown
+  in the manual Add/Edit forms and populated from an invite's location and
+  description. Redacted for anonymous viewers like the other sensitive fields.
+
 ## [0.3.1] - 2026-07-01
 
 ### Fixed
@@ -95,7 +111,8 @@ an existing CalDAV setup rather than replacing it.
 - Tier-C CI: PR-gated lint / format / tests / hadolint / image build, and a
   tag-triggered image publish to GHCR.
 
-[Unreleased]: https://github.com/sgaduuw/hlin/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/sgaduuw/hlin/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/sgaduuw/hlin/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/sgaduuw/hlin/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/sgaduuw/hlin/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sgaduuw/hlin/compare/v0.1.0...v0.2.0

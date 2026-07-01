@@ -49,6 +49,9 @@ def create_app() -> Flask:
     # Secure is opt-in via settings so plain-HTTP dev still works.
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_SECURE"] = settings.session_cookie_secure
+    # Cap request bodies: the only upload is a tiny .ics invite, and every form
+    # is small, so 1 MiB is generous headroom and a cheap DoS guard.
+    app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
     # Keep rendered HTML tidy: strip the newline after a block tag and the
     # leading whitespace before one (spec UI requirement).
     app.jinja_env.trim_blocks = True

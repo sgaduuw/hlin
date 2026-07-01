@@ -14,7 +14,7 @@ from datetime import date
 
 from flask import Blueprint, Response, abort, redirect, render_template, request, url_for
 
-from .. import audit, auth, commands, store
+from .. import audit, auth, commands, ics, store
 from ..audit import AuditAction
 from ..db import SessionLocal
 from ..models import (
@@ -110,12 +110,49 @@ def add_appointment(person_id: int):
             kind=kind,
             scheduled_at=parse_datetime(request.form.get("scheduled_at")),
             status=AppointmentStatus(request.form.get("status", "due")),
+            notes=request.form.get("notes", "").strip() or None,
         )
         session.flush()  # assign the id before auditing the create
         audit.record(session, AuditAction.APPOINTMENT_CREATE, appointment)
         session.commit()
         session.expire(target)
         return render_template("_person_main.html", **_person_context(target))
+
+
+@bp.post("/person/<int:person_id>/appointment/from-ics")
+@auth.login_required
+def appointment_from_ics(person_id: int):
+    """Parse an uploaded .ics invite and re-render the person fragment with the
+    Add-appointment form pre-filled for review. This does NOT create anything;
+    the user reviews the fields and submits the normal add-appointment form,
+    which is where the create + audit happen. Bad uploads show a message, not a
+    500. (The global MAX_CONTENT_LENGTH caps the upload size.)"""
+    with SessionLocal() as session:
+        target = _require_person(session, person_id)
+        upload = request.files.get("ics")
+        if upload is None or not upload.filename:
+            return render_template(
+                "_person_main.html", **_person_context(target), ics_error="No file was uploaded."
+            )
+        try:
+            event, count = ics.parse_invite(upload.read())
+        except ics.InvalidICS as exc:
+            return render_template(
+                "_person_main.html", **_person_context(target), ics_error=str(exc)
+            )
+        prefill = {
+            "kind": event.kind_suggestion or "",
+            "scheduled_at": event.scheduled_at.strftime("%Y-%m-%dT%H:%M")
+            if event.scheduled_at
+            else "",
+            "notes": event.notes or "",
+        }
+        return render_template(
+            "_person_main.html",
+            **_person_context(target),
+            prefill=prefill,
+            extra_events=count - 1,
+        )
 
 
 @bp.post("/person/<int:person_id>/obligation")
@@ -266,6 +303,7 @@ def edit_appointment(person_id: int, appointment_id: int):
             kind=kind,
             scheduled_at=parse_datetime(request.form.get("scheduled_at")),
             status=AppointmentStatus(request.form.get("status", "due")),
+            notes=request.form.get("notes", "").strip() or None,
         )
         audit.record(session, AuditAction.APPOINTMENT_UPDATE, appointment)
         session.commit()
