@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-07-05
+
+Hardening from a full security + best-practice sweep (no BLOCKER/HIGH found;
+the core redaction / login-gating / injection properties verified clean).
+
+### Security
+- Fix a first-boot race where a second gunicorn worker could read the
+  persisted session key file before it was written, giving that worker an
+  empty (forgeable) signing key until restart. The creator now returns the
+  key it wrote, and a racing worker retries the read until the content lands.
+- Add HTTP security response headers on every response:
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and
+  `Referrer-Policy: no-referrer`. (HSTS stays with the TLS reverse proxy.)
+
+### Fixed
+- Reject an out-of-range recurring-obligation interval (must be 1-1200
+  months): a huge value overflowed the derived next-due date and returned a
+  persistent 500 on the anonymous dashboard and `.ics` feeds until the row was
+  repaired.
+- Malformed dates and invalid `<select>` values now yield a 400 instead of a
+  500 (tolerant date parsing; a validate-or-400 helper for the status / kind
+  enums).
+
 ## [0.4.0] - 2026-07-01
 
 Create appointments from calendar invites.
@@ -111,7 +134,8 @@ an existing CalDAV setup rather than replacing it.
 - Tier-C CI: PR-gated lint / format / tests / hadolint / image build, and a
   tag-triggered image publish to GHCR.
 
-[Unreleased]: https://github.com/sgaduuw/hlin/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/sgaduuw/hlin/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/sgaduuw/hlin/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/sgaduuw/hlin/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/sgaduuw/hlin/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/sgaduuw/hlin/compare/v0.2.0...v0.3.0

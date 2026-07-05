@@ -21,8 +21,9 @@ _USERNAME = "username"
 _PERSON_ID = "person_id"  # the tracked Person this login is linked to, if any
 
 # Compared against when the username is unknown, so an absent user costs the
-# same pbkdf2 work as a wrong password and the two are not distinguishable by
-# response latency (no username-enumeration oracle).
+# same password-hashing work (werkzeug's default, currently scrypt) as a wrong
+# password: the two are not distinguishable by response latency (no
+# username-enumeration oracle).
 _DUMMY_HASH = generate_password_hash("hlin-no-such-user")
 
 

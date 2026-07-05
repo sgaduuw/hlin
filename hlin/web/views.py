@@ -27,7 +27,7 @@ from ..models import (
 )
 from ..recall import next_due_date, obligations_needing_attention
 from ..settings import settings
-from ._forms import parse_date, parse_datetime
+from ._forms import enum_field, parse_date, parse_datetime
 
 bp = Blueprint("views", __name__)
 
@@ -109,7 +109,9 @@ def add_appointment(person_id: int):
             person_id,
             kind=kind,
             scheduled_at=parse_datetime(request.form.get("scheduled_at")),
-            status=AppointmentStatus(request.form.get("status", "due")),
+            status=enum_field(
+                AppointmentStatus, request.form.get("status"), default=AppointmentStatus.DUE
+            ),
             notes=request.form.get("notes", "").strip() or None,
         )
         session.flush()  # assign the id before auditing the create
@@ -162,8 +164,12 @@ def add_obligation(person_id: int):
         target = _require_person(session, person_id)
         kind = request.form.get("kind", "").strip()
         interval = request.form.get("interval_months", "").strip()
-        if not kind or not interval.isdigit():
-            abort(400)
+        if (
+            not kind
+            or not (interval.isascii() and interval.isdigit())
+            or not 1 <= int(interval) <= 1200
+        ):
+            abort(400)  # cap the interval: a huge value overflows the derived next-due date
         obligation = commands.add_obligation(
             session,
             person_id,
@@ -302,7 +308,9 @@ def edit_appointment(person_id: int, appointment_id: int):
             appointment,
             kind=kind,
             scheduled_at=parse_datetime(request.form.get("scheduled_at")),
-            status=AppointmentStatus(request.form.get("status", "due")),
+            status=enum_field(
+                AppointmentStatus, request.form.get("status"), default=AppointmentStatus.DUE
+            ),
             notes=request.form.get("notes", "").strip() or None,
         )
         audit.record(session, AuditAction.APPOINTMENT_UPDATE, appointment)
@@ -327,8 +335,12 @@ def delete_appointment(person_id: int, appointment_id: int):
 def edit_obligation(person_id: int, obligation_id: int):
     kind = request.form.get("kind", "").strip()
     interval = request.form.get("interval_months", "").strip()
-    if not kind or not interval.isdigit():
-        abort(400)
+    if (
+        not kind
+        or not (interval.isascii() and interval.isdigit())
+        or not 1 <= int(interval) <= 1200
+    ):
+        abort(400)  # cap the interval: a huge value overflows the derived next-due date
     with SessionLocal() as session:
         target = _require_person(session, person_id)
         obligation = _require_child(session, RecurringObligation, person_id, obligation_id)
