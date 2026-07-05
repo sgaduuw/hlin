@@ -15,7 +15,7 @@ from .. import audit, auth, commands, store
 from ..audit import AuditAction
 from ..db import SessionLocal
 from ..models import Contact, ContactKind
-from ._forms import parse_date
+from ._forms import enum_field, parse_date
 
 bp = Blueprint("contacts", __name__, url_prefix="/contacts")
 
@@ -61,7 +61,7 @@ def add():
         contact = commands.add_contact(
             session,
             name=name,
-            kind=ContactKind(request.form.get("kind", "friend")),
+            kind=enum_field(ContactKind, request.form.get("kind"), default=ContactKind.FRIEND),
             parent_contact_id=_form_parent_id(),
             phone=request.form.get("phone", "").strip() or None,
             email=request.form.get("email", "").strip() or None,
@@ -86,7 +86,7 @@ def edit(contact_id: int):
             session,
             contact,
             name=name,
-            kind=ContactKind(request.form.get("kind", "friend")),
+            kind=enum_field(ContactKind, request.form.get("kind"), default=ContactKind.FRIEND),
             parent_contact_id=_form_parent_id(),
             phone=request.form.get("phone", "").strip() or None,
             email=request.form.get("email", "").strip() or None,
