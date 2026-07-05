@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import pathlib
 import secrets
+import time
 from importlib.metadata import PackageNotFoundError, version
 
 from flask import Flask, redirect, request, url_for
@@ -25,20 +26,34 @@ def _resolve_secret_key() -> str:
     beside the database: gunicorn forks multiple workers that each build the
     app, so a per-process ephemeral key would make a cookie minted by one
     worker fail validation on another (the login feature then half-works).
-    ``O_EXCL`` makes the first worker to create the file win; the rest read
-    that value, so every worker and every restart converge on one key.
+    ``O_EXCL`` makes the first worker to create the file win; every worker and
+    every restart converge on one key.
+
+    The winner returns the key it wrote directly, rather than reading the file
+    back, because on first boot the file exists (O_EXCL succeeded) but is still
+    empty for a moment before the write lands, and a racing loser reading it
+    then would get an empty key (a silently broken / forgeable session signer).
+    So the loser retries the read until the content appears.
     """
     if settings.secret_key:
         return settings.secret_key
     key_path = pathlib.Path(settings.db_path).resolve().parent / ".hlin-secret-key"
+    key = secrets.token_hex(32)
     try:
         fd = os.open(key_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     except FileExistsError:
         pass
     else:
         with os.fdopen(fd, "w") as handle:
-            handle.write(secrets.token_hex(32))
-    return key_path.read_text().strip()
+            handle.write(key)
+        return key
+    # Another worker created it; wait for its content (it may be mid-write).
+    for _ in range(500):
+        existing = key_path.read_text().strip()
+        if existing:
+            return existing
+        time.sleep(0.01)
+    raise RuntimeError(f"{key_path} exists but stayed empty")
 
 
 def create_app() -> Flask:
@@ -52,6 +67,18 @@ def create_app() -> Flask:
     # Cap request bodies: the only upload is a tiny .ics invite, and every form
     # is small, so 1 MiB is generous headroom and a cheap DoS guard.
     app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
+
+    @app.after_request
+    def security_headers(response):
+        # Cheap, unconditional hardening for an app whose logged-in surface
+        # edits sensitive data: no MIME sniffing, no framing (clickjacking on
+        # the edit forms), no referrer leakage. HSTS is deliberately left to
+        # the TLS-terminating reverse proxy.
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        return response
+
     # Keep rendered HTML tidy: strip the newline after a block tag and the
     # leading whitespace before one (spec UI requirement).
     app.jinja_env.trim_blocks = True
