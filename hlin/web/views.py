@@ -164,7 +164,11 @@ def add_obligation(person_id: int):
         target = _require_person(session, person_id)
         kind = request.form.get("kind", "").strip()
         interval = request.form.get("interval_months", "").strip()
-        if not kind or not interval.isdigit() or not 1 <= int(interval) <= 1200:
+        if (
+            not kind
+            or not (interval.isascii() and interval.isdigit())
+            or not 1 <= int(interval) <= 1200
+        ):
             abort(400)  # cap the interval: a huge value overflows the derived next-due date
         obligation = commands.add_obligation(
             session,
@@ -331,7 +335,11 @@ def delete_appointment(person_id: int, appointment_id: int):
 def edit_obligation(person_id: int, obligation_id: int):
     kind = request.form.get("kind", "").strip()
     interval = request.form.get("interval_months", "").strip()
-    if not kind or not interval.isdigit() or not 1 <= int(interval) <= 1200:
+    if (
+        not kind
+        or not (interval.isascii() and interval.isdigit())
+        or not 1 <= int(interval) <= 1200
+    ):
         abort(400)  # cap the interval: a huge value overflows the derived next-due date
     with SessionLocal() as session:
         target = _require_person(session, person_id)

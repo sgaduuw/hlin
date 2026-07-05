@@ -72,6 +72,13 @@ def test_obligation_rejects_huge_interval(client):
         headers={"HX-Request": "true"},
     )
     assert bad.status_code == 400
+    # A unicode digit (isdigit() True but int() raises) is also a 400, not a 500.
+    uni = client.post(
+        f"/person/{pid}/obligation",
+        data={"kind": "tandarts", "interval_months": "²"},
+        headers={"HX-Request": "true"},
+    )
+    assert uni.status_code == 400
     ok = client.post(
         f"/person/{pid}/obligation",
         data={"kind": "tandarts", "interval_months": "6"},
